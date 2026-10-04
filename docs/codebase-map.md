@@ -1,4 +1,4 @@
-# KidClock — Codebase Map
+# esp32-clock — Codebase Map
 
 > Where code and key files live. Updated as modules are implemented.
 

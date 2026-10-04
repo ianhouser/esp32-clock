@@ -1,4 +1,4 @@
-# KidClock — Product Brief
+# esp32-clock — Product Brief
 
 ## Vision
 

@@ -1,6 +1,6 @@
-# Contributing to KidClock
+# Contributing to esp32-clock
 
-Welcome to the KidClock project! This is an ESP32-C3 nightstand clock for kids. To keep our codebase clean, history readable, and development organized, we strictly follow a GitHub Issue-driven Git workflow.
+Welcome to the esp32-clock project! This is an ESP32-C3 nightstand clock for kids. To keep our codebase clean, history readable, and development organized, we strictly follow a GitHub Issue-driven Git workflow.
 
 ## Mandatory Git Workflow
 

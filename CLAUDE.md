@@ -1,4 +1,4 @@
-# KidClock
+# esp32-clock
 
 > Read this file first. It wins over all other docs if there's a conflict — except for **current execution state**, where `docs/agent-handoff.md` wins (see Read Order below).
 

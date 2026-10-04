@@ -1,4 +1,4 @@
-# KidClock — Hardware Guide
+# esp32-clock — Hardware Guide
 
 > **Audience:** A teenager with basic electronics experience. If you can plug in a USB cable, you can build this.
 

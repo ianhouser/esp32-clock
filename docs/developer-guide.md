@@ -1,4 +1,4 @@
-# KidClock — Developer Guide
+# esp32-clock — Developer Guide
 
 > **Audience:** Someone setting up the project for the first time. Covers everything from installing tools to flashing the ESP32-C3.
 
@@ -32,8 +32,8 @@ pip install platformio
 
 ```bash
 # Clone the repo
-git clone https://github.com/<owner>/kidclock.git
-cd kidclock
+git clone https://github.com/<owner>/esp32-clock.git
+cd esp32-clock
 
 # Build firmware
 pio run
@@ -118,8 +118,8 @@ pio run --target clean
 
 1. **Flash firmware** + **upload LittleFS** via USB.
 2. ESP32 boots → no WiFi saved → starts **AP mode**.
-3. AP name: `KidClock-Setup` (open network).
-4. Connect your phone to `KidClock-Setup`.
+3. AP name: `ESP32-Clock-Setup` (open network).
+4. Connect your phone to `ESP32-Clock-Setup`.
 5. Captive portal opens → enter your WiFi SSID + password.
 6. ESP32 restarts → connects to your WiFi → shows clock.
 7. Find the device IP in your router or serial monitor.

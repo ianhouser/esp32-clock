@@ -1,8 +1,8 @@
-# KidClock — Architecture
+# esp32-clock — Architecture
 
 ## System Overview
 
-KidClock is a standalone WiFi-connected device running on an ESP32-C3 Super Mini. It drives a 2" TFT display showing time and weather, and serves a web control panel for configuration.
+esp32-clock is a standalone WiFi-connected device running on an ESP32-C3 Super Mini. It drives a 2" TFT display showing time and weather, and serves a web control panel for configuration.
 
 ```
 ┌─────────────────────────────────────────────┐

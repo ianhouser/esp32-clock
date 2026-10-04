@@ -1,4 +1,4 @@
-# 🕐 KidClock
+# 🕐 esp32-clock
 
 A WiFi-connected nightstand clock for kids, built on an ESP32-C3 Super Mini with a 2" IPS TFT display. Controllable from any phone or browser on your local network.
 
@@ -34,8 +34,8 @@ pip install platformio    # any OS
 ### 2. Clone & Build
 
 ```bash
-git clone https://github.com/<owner>/kidclock.git
-cd kidclock
+git clone https://github.com/<owner>/esp32-clock.git
+cd esp32-clock
 pio run                        # Build
 pio run --target upload        # Flash firmware
 pio run --target uploadfs      # Upload web UI
@@ -44,7 +44,7 @@ pio device monitor --baud 115200  # Watch serial output
 
 ### 3. First Boot
 
-1. Power on → ESP32 creates `KidClock-Setup` WiFi network
+1. Power on → ESP32 creates `ESP32-Clock-Setup` WiFi network
 2. Connect your phone → captive portal opens
 3. Enter your home WiFi credentials → ESP32 restarts
 4. Open `http://<device-ip>` on your phone → control panel
