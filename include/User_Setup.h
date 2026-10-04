@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config.h"
+
 // ==========================================
 // TFT_eSPI Configuration for esp32-clock
 // Display: GMT020-02-7P (ST7789, 240x320 IPS)
@@ -11,12 +13,12 @@
 #define TFT_WIDTH  240
 #define TFT_HEIGHT 320
 
-// Pin mappings for ESP32-C3
-#define TFT_CS   10
-#define TFT_RST   3
-#define TFT_DC    2
-#define TFT_MOSI  7
-#define TFT_SCLK  6
+// Pin mappings linked to single source of truth in config.h
+#define TFT_CS   PIN_TFT_CS
+#define TFT_RST  PIN_TFT_RST
+#define TFT_DC   PIN_TFT_DC
+#define TFT_MOSI PIN_TFT_MOSI
+#define TFT_SCLK PIN_TFT_SCLK
 
 // Fonts to include
 #define LOAD_GLCD

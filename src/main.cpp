@@ -23,54 +23,64 @@ void printTFTDiagnostics() {
 }
 
 void drawTestScreen() {
+    int16_t w = tft.width();
+    int16_t h = tft.height();
     tft.fillScreen(TFT_NAVY);
 
     // Header banner
-    tft.fillRect(0, 0, 320, 36, TFT_DARKCYAN);
+    tft.fillRect(0, 0, w, 36, TFT_DARKCYAN);
     tft.setTextColor(TFT_WHITE, TFT_DARKCYAN);
     tft.setTextDatum(MC_DATUM);
     tft.setTextFont(4);
-    tft.drawString("esp32-clock", 160, 18);
+    tft.drawString("esp32-clock", w / 2, 18);
 
     // Subtitle
     tft.setTextColor(TFT_YELLOW, TFT_NAVY);
     tft.setTextDatum(MC_DATUM);
     tft.setTextFont(2);
-    tft.drawString("ST7789 2.0 IPS TFT - 320x240", 160, 50);
+    char subTitle[48];
+    snprintf(subTitle, sizeof(subTitle), "ST7789 2.0 IPS TFT - %dx%d", w, h);
+    tft.drawString(subTitle, w / 2, 50);
 
     // Status box
-    tft.drawRect(20, 75, 280, 80, TFT_WHITE);
+    const int16_t boxMargin = 20;
+    const int16_t boxW = w - (2 * boxMargin);
+    tft.drawRect(boxMargin, 75, boxW, 80, TFT_WHITE);
     tft.setTextColor(TFT_WHITE, TFT_NAVY);
     tft.setTextDatum(TL_DATUM);
     tft.setTextFont(2);
 
     char buf[64];
     snprintf(buf, sizeof(buf), "MCU: ESP32-C3 @ %u MHz", getCpuFrequencyMhz());
-    tft.drawString(buf, 30, 85);
+    tft.drawString(buf, boxMargin + 10, 85);
 
     snprintf(buf, sizeof(buf), "Free Heap: %u KB", (unsigned int)(ESP.getFreeHeap() / 1024));
-    tft.drawString(buf, 30, 105);
+    tft.drawString(buf, boxMargin + 10, 105);
 
-    tft.drawString("Hardware SPI2 Active", 30, 125);
+    tft.drawString("Hardware SPI2 Active", boxMargin + 10, 125);
 
     // Color bars
     const uint16_t testColors[] = { TFT_RED, TFT_GREEN, TFT_BLUE, TFT_YELLOW, TFT_CYAN, TFT_MAGENTA, TFT_WHITE };
     const int count = sizeof(testColors) / sizeof(testColors[0]);
-    const int width = 280 / count;
+    const int barWidth = boxW / count;
     for (int i = 0; i < count; i++) {
-        tft.fillRect(20 + (i * width), 168, width, 24, testColors[i]);
+        tft.fillRect(boxMargin + (i * barWidth), 168, barWidth, 24, testColors[i]);
     }
-    tft.drawRect(19, 167, (count * width) + 2, 26, TFT_WHITE);
+    tft.drawRect(boxMargin - 1, 167, (count * barWidth) + 2, 26, TFT_WHITE);
 
     tft.setTextColor(TFT_GREEN, TFT_NAVY);
     tft.setTextDatum(MC_DATUM);
     tft.setTextFont(2);
-    tft.drawString("Display Test Active", 160, 215);
+    tft.drawString("Display Test Active", w / 2, 215);
 }
 
 void setup() {
     Serial.begin(115200);
-    delay(1500); // Wait for USB CDC
+    // Non-blocking wait for USB CDC: connect if available, but proceed on timeout for standalone power
+    unsigned long startSerialWait = millis();
+    while (!Serial && (millis() - startSerialWait < 1500)) {
+        delay(10);
+    }
 
     Serial.println("\n=================================");
     Serial.println("  esp32-clock — Display Test v2");
@@ -87,7 +97,7 @@ void setup() {
 
     // Initialize display
     tft.init();
-    tft.setRotation(1); // Landscape
+    tft.setRotation(SCREEN_ROTATION); // From config.h
     tft.invertDisplay(true); // Required for IPS ST7789 panels
 
     printTFTDiagnostics();
@@ -98,17 +108,17 @@ void setup() {
 
 void loop() {
     static unsigned long lastUpdate = 0;
-    static int cycle = 0;
+    static uint32_t cycle = 0;
 
     if (millis() - lastUpdate >= 2000) {
         lastUpdate = millis();
         cycle++;
 
-        // Flash small heartbeat dot
+        // Flash small heartbeat dot in top-right corner
         uint16_t dotColor = (cycle % 2 == 0) ? TFT_GREEN : TFT_BLACK;
-        tft.fillCircle(300, 18, 5, dotColor);
+        tft.fillCircle(tft.width() - 20, 18, 5, dotColor);
 
-        Serial.printf("[Loop] Heartbeat #%d | Uptime: %lu s | Free Heap: %u bytes\n",
+        Serial.printf("[Loop] Heartbeat #%u | Uptime: %lu s | Free Heap: %u bytes\n",
                       cycle, millis() / 1000, ESP.getFreeHeap());
     }
 
