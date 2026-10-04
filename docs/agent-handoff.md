@@ -1,41 +1,42 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-04 14:10 PDT — Antigravity (Issue #1 verified)
+**Last updated:** 2026-10-04 14:45 PDT — Antigravity (PR #2 merged, Milestone 1 complete)
 
 ## Current Focus
 
 - **Milestone:** [v0.1-mvp](https://github.com/ianhouser/esp32-clock/milestone/1)
-- **Task:** Issue #1 complete. Next: Issue #2 (Time Manager & NTP Synchronization)
+- **Task:** Ready for Task 2: WiFi Connection & NTP Time Synchronization (`TimeManager`)
 - **Blockers:** None
 
 ## Last Three Decisions
 
-1. 20MHz SPI frequency configured in `User_Setup.h` for reliable jumper wire prototyping — 2026-10-04
-2. Landscape orientation (320×240) with ST7789 driver and color inversion enabled — 2026-10-04
-3. Native USB CDC enabled (`ARDUINO_USB_CDC_ON_BOOT=1`) for serial output on ESP32-C3 Super Mini — 2026-10-04
+1. Linked `User_Setup.h` directly to `config.h` as single source of truth for pin definitions — 2026-10-04
+2. Dynamically anchored display graphics via `tft.width()` / `tft.height()` and bounded USB CDC wait (<1500ms) — 2026-10-04
+3. Added workspace skill `pr-review-and-remediate` for full-cycle PR review and code remediation — 2026-10-04
 
 ## What Just Happened
 
-- Created all 5 GitHub project milestones and core labels
-- Created GitHub Issue #1 (`feat: project scaffolding & display hello-world`)
-- Authored PlatformIO environment with `TFT_eSPI` ST7789 configuration
-- Verified hardware display operation on ESP32-C3 Super Mini and GMT020-02-7P TFT
-- Documented wiring troubleshooting entry in `docs/troubleshooting/INDEX.md`
+- Completed code and strategic review on PR #2
+- Remediated pin definition duplication, hardcoded dimensions, and blocking CDC serial wait
+- Verified compilation with `pio run` (0 errors, 0 warnings)
+- Created `.agents/skills/pr-review-and-remediate/SKILL.md`
+- Merged PR #2 into `main` and cleaned up local branch `feat/#1-display-hello-world`
 
 ## Next Up
 
-1. Open PR for `feat/#1-display-hello-world` resolving Issue #1
-2. Human user reviews and merges PR
-3. Create GitHub Issue #2: Time Manager & NTP Synchronization (syncing time over WiFi)
-4. Implement `TimeManager` module and digital clock rendering
+1. Create GitHub Issue for WiFi Connection & NTP Time Synchronization
+2. Implement WiFi connectivity handling (storing credentials safely without committing secrets)
+3. Implement `TimeManager` module for SNTP synchronization, timezone offset, and local time tracking
+4. Create initial digital clock face rendering to ST7789 display
+5. Verify on hardware and submit PR
 
 ## Open Risks / Watch List
 
-- Ensure WiFi credentials are securely kept in local storage or entered via AP setup rather than hardcoded in source
-- Keep SPI frequency at 20MHz until soldered into custom enclosure
+- Ensure WiFi credentials are kept out of git tracking (e.g. via `include/secrets.h` ignored in `.gitignore` or NVS provisioning)
+- Keep SPI frequency at 20MHz during jumper-wire prototyping
 
 ## Pointers
 
 - **INDEX:** `docs/INDEX.md`
-- **Active Issue:** https://github.com/ianhouser/esp32-clock/issues/1
+- **Closed PR:** https://github.com/ianhouser/esp32-clock/pull/2
 - **Hardware wiring:** `docs/hardware-guide.md`
