@@ -17,6 +17,7 @@
 #define SCREEN_WIDTH   320
 #define SCREEN_HEIGHT  240
 #define SCREEN_ROTATION  1 // Landscape (0=portrait, 1=landscape 90 deg, 2=inv portrait, 3=inv landscape)
+#define SCREEN_INVERT_DISPLAY true // Required for IPS display panels
 
 // Reserved Pins for Future Expansions
 // #define PIN_LED_DATA   0  // Future: WS2812B RGBIC LED

@@ -86,6 +86,7 @@ void updateDisplay(bool forceAll = false) {
     static int lastMinute = -1;
     static TimeSyncState lastState = TimeSyncState::IDLE;
     static int8_t lastRssi = 99;
+    static unsigned long lastHeaderUpdate = 0;
     static unsigned long lastInfoUpdate = 0;
 
     struct tm timeinfo;
@@ -93,11 +94,15 @@ void updateDisplay(bool forceAll = false) {
     int currentSecond = hasLocalTime ? timeinfo.tm_sec : -1;
     int currentMinute = hasLocalTime ? timeinfo.tm_min : -1;
     TimeSyncState currentState = timeManager.getState();
+    int8_t currentRssi = timeManager.getRSSI();
 
     int16_t w = tft.width();
 
     // 1. Header Status Update (WiFi + NTP badges)
-    if (forceAll || currentState != lastState || (millis() - lastInfoUpdate >= 2000)) {
+    if (forceAll || currentState != lastState || currentRssi != lastRssi || (millis() - lastHeaderUpdate >= 2000)) {
+        lastHeaderUpdate = millis();
+        lastRssi = currentRssi;
+
         // Draw WiFi Status Indicator on top-right
         uint16_t wifiDotColor = TFT_RED;
         const char* wifiLabel = "Offline";
@@ -118,7 +123,7 @@ void updateDisplay(bool forceAll = false) {
 
         char headerStatus[32];
         if (timeManager.isConnected()) {
-            snprintf(headerStatus, sizeof(headerStatus), "WiFi %d dBm", timeManager.getRSSI());
+            snprintf(headerStatus, sizeof(headerStatus), "WiFi %d dBm", currentRssi);
         } else {
             snprintf(headerStatus, sizeof(headerStatus), "%s", wifiLabel);
         }
@@ -255,7 +260,7 @@ void setup() {
     // Initialize ST7789 Display
     tft.init();
     tft.setRotation(SCREEN_ROTATION);
-    tft.invertDisplay(true); // Required for IPS display panels
+    tft.invertDisplay(SCREEN_INVERT_DISPLAY); // Panel inversion configured in config.h
 
     // Render base frame layout
     drawStaticLayout();
