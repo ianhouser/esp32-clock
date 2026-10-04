@@ -19,6 +19,21 @@
 #define SCREEN_ROTATION  1 // Landscape (0=portrait, 1=landscape 90 deg, 2=inv portrait, 3=inv landscape)
 #define SCREEN_INVERT_DISPLAY true // Required for IPS display panels
 
+// Time-Based Night Mode Schedule (24-hour format)
+#define NIGHT_MODE_START_HOUR 22  // 10:00 PM
+#define NIGHT_MODE_START_MIN  0
+#define NIGHT_MODE_END_HOUR   7   // 7:00 AM
+#define NIGHT_MODE_END_MIN    0
+
+// Optional Hardware Backlight Dimming (LEDC PWM)
+// Set to -1 if using 7-pin GMT020-02-7P (no dedicated BL pin; uses software palette dimming)
+#define PIN_TFT_BL          -1
+#define PWM_BL_CHANNEL       0
+#define PWM_BL_FREQ       5000
+#define PWM_BL_RESOLUTION    8
+#define PWM_BL_DAY_DUTY    255
+#define PWM_BL_NIGHT_DUTY   38   // ~15% duty for dark environments
+
 // Reserved Pins for Future Expansions
 // #define PIN_LED_DATA   0  // Future: WS2812B RGBIC LED
 // #define PIN_LIGHT_ADC  1  // Future: Ambient Light Sensor (ADC)
