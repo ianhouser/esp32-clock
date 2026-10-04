@@ -1,42 +1,44 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-04 14:45 PDT — Antigravity (PR #2 merged, Milestone 1 complete)
+**Last updated:** 2026-10-04 14:50 PDT — Antigravity (Issue #3 implementation complete, PR ready)
 
 ## Current Focus
 
 - **Milestone:** [v0.1-mvp](https://github.com/ianhouser/esp32-clock/milestone/1)
-- **Task:** Ready for Task 2: WiFi Connection & NTP Time Synchronization (`TimeManager`)
+- **Task:** Task 2 / Issue #3: WiFi Connection & NTP Time Synchronization (`TimeManager`)
 - **Blockers:** None
 
 ## Last Three Decisions
 
-1. Linked `User_Setup.h` directly to `config.h` as single source of truth for pin definitions — 2026-10-04
-2. Dynamically anchored display graphics via `tft.width()` / `tft.height()` and bounded USB CDC wait (<1500ms) — 2026-10-04
-3. Added workspace skill `pr-review-and-remediate` for full-cycle PR review and code remediation — 2026-10-04
+1. Built modular `TimeManager` subsystem with non-blocking WiFi reconnection, POSIX TZ, and SNTP callback handling — 2026-10-04
+2. Implemented `secrets.h.example` credential template with `#if __has_include` fallback in `main.cpp` for safe git hygiene and clean compilation — 2026-10-04
+3. Designed flicker-free 320x240 dark slate digital clock UI (Font 7 digital readout, header status pill, network & telemetry cards) — 2026-10-04
 
 ## What Just Happened
 
-- Completed code and strategic review on PR #2
-- Remediated pin definition duplication, hardcoded dimensions, and blocking CDC serial wait
-- Verified compilation with `pio run` (0 errors, 0 warnings)
-- Created `.agents/skills/pr-review-and-remediate/SKILL.md`
-- Merged PR #2 into `main` and cleaned up local branch `feat/#1-display-hello-world`
+- Created GitHub Issue [#3](https://github.com/ianhouser/esp32-clock/issues/3) under milestone `v0.1-mvp`
+- Checked out feature branch `feat/#3-time-manager-ntp`
+- Created `include/secrets.h.example` with timezone and NTP documentation; verified `secrets.h` is ignored by `.gitignore`
+- Developed `include/TimeManager.h` and `src/TimeManager.cpp`
+- Refactored `src/main.cpp` from diagnostic test pattern to live digital clock display with status cards
+- Verified compilation via `pio run` (100% success, 0 errors, 0 warnings in project code)
+- Created implementation plan `docs/plans/2026-10-04-issue-3-wifi-ntp-timemanager.md` and updated `docs/INDEX.md`
 
 ## Next Up
 
-1. Create GitHub Issue for WiFi Connection & NTP Time Synchronization
-2. Implement WiFi connectivity handling (storing credentials safely without committing secrets)
-3. Implement `TimeManager` module for SNTP synchronization, timezone offset, and local time tracking
-4. Create initial digital clock face rendering to ST7789 display
-5. Verify on hardware and submit PR
+1. Review and merge Pull Request #4 (https://github.com/ianhouser/esp32-clock/pull/4)
+2. Test on physical hardware (flash firmware with real WiFi credentials in `include/secrets.h`)
+3. Proceed to Task 3: Ambient Light Sensor (ADC) & Display Backlight Control
 
 ## Open Risks / Watch List
 
-- Ensure WiFi credentials are kept out of git tracking (e.g. via `include/secrets.h` ignored in `.gitignore` or NVS provisioning)
-- Keep SPI frequency at 20MHz during jumper-wire prototyping
+- Ensure developers copy `include/secrets.h.example` to `include/secrets.h` when flashing to physical hardware to connect to live WiFi
+- Maintain 20MHz SPI frequency for reliable display performance over Dupont breadboard jumpers
 
 ## Pointers
 
 - **INDEX:** `docs/INDEX.md`
-- **Closed PR:** https://github.com/ianhouser/esp32-clock/pull/2
+- **Issue:** https://github.com/ianhouser/esp32-clock/issues/3
+- **PR:** https://github.com/ianhouser/esp32-clock/pull/4
+- **Plan:** `docs/plans/2026-10-04-issue-3-wifi-ntp-timemanager.md`
 - **Hardware wiring:** `docs/hardware-guide.md`
