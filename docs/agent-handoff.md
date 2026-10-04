@@ -26,7 +26,7 @@
 
 ## Next Up
 
-1. Open Pull Request for `feat/#3-time-manager-ntp` linking to Issue #3
+1. Review and merge Pull Request #4 (https://github.com/ianhouser/esp32-clock/pull/4)
 2. Test on physical hardware (flash firmware with real WiFi credentials in `include/secrets.h`)
 3. Proceed to Task 3: Ambient Light Sensor (ADC) & Display Backlight Control
 
@@ -39,5 +39,6 @@
 
 - **INDEX:** `docs/INDEX.md`
 - **Issue:** https://github.com/ianhouser/esp32-clock/issues/3
+- **PR:** https://github.com/ianhouser/esp32-clock/pull/4
 - **Plan:** `docs/plans/2026-10-04-issue-3-wifi-ntp-timemanager.md`
 - **Hardware wiring:** `docs/hardware-guide.md`
