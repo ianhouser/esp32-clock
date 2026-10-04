@@ -41,6 +41,7 @@
 
 - **INDEX:** `docs/INDEX.md`
 - **Issue:** https://github.com/ianhouser/esp32-clock/issues/5
+- **PR:** https://github.com/ianhouser/esp32-clock/pull/6
 - **Plan:** `docs/plans/2026-10-04-issue-5-time-based-dimming.md`
 - **Hardware wiring:** `docs/hardware-guide.md`
 
