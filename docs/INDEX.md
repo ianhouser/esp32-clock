@@ -11,5 +11,6 @@
 | `docs/troubleshooting/INDEX.md` | troubleshooting | 2026-10-04 | Troubleshooting index — known issues and solutions catalog. |
 | `docs/plans/2026-10-04-issue-1-display-hello-world.md` | developer | 2026-10-04 | Implementation plan — setup PlatformIO environment and verify display on hardware. |
 | `docs/plans/2026-10-04-issue-3-wifi-ntp-timemanager.md` | developer | 2026-10-04 | Implementation plan — modular WiFi management, SNTP synchronization, and digital clock face. |
+| `docs/plans/2026-10-04-issue-5-time-based-dimming.md` | developer | 2026-10-04 | Implementation plan — time-based display night mode, software color dimming, and PWM control. |
 | `AGENTS.md` | reference | 2026-10-04 | Agent hub — binding decisions, stop rules, and critical gotchas. |
 | `CONTRIBUTING.md` | developer | 2026-10-04 | Contributing — mandatory git workflow and coding standards. |

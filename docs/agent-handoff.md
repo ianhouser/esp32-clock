@@ -1,44 +1,47 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-04 15:18 PDT — Antigravity (PR #4 reviewed, remediated, and merged to main)
+**Last updated:** 2026-10-04 15:26 PDT — Antigravity (Issue #5 time-based display dimming implemented & verified)
 
 ## Current Focus
 
 - **Milestone:** [v0.1-mvp](https://github.com/ianhouser/esp32-clock/milestone/1)
-- **Task:** Task 3: Ambient Light Sensor (ADC) & Display Backlight Dimming / Next MVP feature
+- **Task:** Task 3: Time-based Display Dimming & Night Mode (Issue #5)
 - **Blockers:** None
 
 ## Last Three Decisions
 
-1. Decoupled telemetry timers in `main.cpp` and dynamically tracked RSSI changes to prevent timer starvation — 2026-10-04
-2. Centralized display specifications including `SCREEN_INVERT_DISPLAY` in `include/config.h` — 2026-10-04
-3. Built and merged modular `TimeManager` subsystem with non-blocking WiFi reconnection, POSIX TZ, and SNTP callback handling (PR #4) — 2026-10-04
+1. Deferred physical light sensor (ADC GPIO 1) due to pending hardware arrival and implemented time-based scheduled night mode dimming (Issue #5) — 2026-10-04
+2. Implemented dual-mode dimming architecture: zero-hardware software color palette shifting (deep warm amber/true black for 7-pin display) and portable ESP32 LEDC PWM backlight control — 2026-10-04
+3. Decoupled telemetry timers in `main.cpp` and dynamically tracked RSSI changes to prevent timer starvation — 2026-10-04
 
 ## What Just Happened
 
-- Conducted strategic code review on PR #4 (`feat/#3-time-manager-ntp`)
-- Implemented and verified code remediations:
-  - Decoupled `lastHeaderUpdate` from `lastInfoUpdate` in `src/main.cpp` for real-time RSSI updates
-  - Centralized `SCREEN_INVERT_DISPLAY` in `include/config.h`
-  - Clean PlatformIO compilation verification (`pio run`)
-- Pushed remediation commit `b8a9839` and posted audit trail comments on PR #4
-- PR #4 successfully merged into `main`
+- Created Issue [#5](https://github.com/ianhouser/esp32-clock/issues/5) (`feat: time-based display night mode and dimming schedule`)
+- Checked out feature branch `feat/#5-time-based-dimming`
+- Authored implementation plan `docs/plans/2026-10-04-issue-5-time-based-dimming.md`
+- Implemented modular `DisplayTheme` (`include/DisplayTheme.h`) and `DisplayManager` (`include/DisplayManager.h`, `src/DisplayManager.cpp`)
+- Configured 22:00–07:00 night schedule and LEDC PWM settings in `include/config.h`
+- Refactored `src/main.cpp` to consume theme tokens dynamically and render a live `DAY` / `NIGHT` status badge
+- Verified clean build with `pio run` (39.9 KB RAM / 764 KB Flash, 0 errors)
+- Updated `docs/INDEX.md`
 
 ## Next Up
 
-1. Switch local workspace back to `main` branch and pull latest changes: `git checkout main && git pull`
-2. Test on physical hardware (flash firmware with real WiFi credentials in `include/secrets.h`)
-3. Plan and implement Task 3 of Milestone `v0.1-mvp`: Ambient Light Sensor (ADC / GPIO 1) & Backlight Control (PWM) or Weather/Sensor integration
+1. Commit and push feature branch `feat/#5-time-based-dimming` to origin and open Pull Request for Issue #5
+2. Conduct code review and merge PR to `main`
+3. Flash and verify on physical ESP32-C3 hardware
+4. Proceed to Task 4 of Milestone `v0.1-mvp`: Live Weather Telemetry Ingestion (Open-Meteo REST API)
 
 ## Open Risks / Watch List
 
-- Ensure developers copy `include/secrets.h.example` to `include/secrets.h` when flashing to physical hardware to connect to live WiFi
-- Maintain 20MHz SPI frequency for reliable display performance over Dupont breadboard jumpers
+- 7-pin GMT020-02-7P TFT module connects backlight directly to VCC, making software color palette dimming (true black + warm amber) the primary dimming mechanism unless hardware is modified
+- Ensure developers copy `include/secrets.h.example` to `include/secrets.h` when flashing to physical hardware
 
 ## Pointers
 
 - **INDEX:** `docs/INDEX.md`
-- **Issue:** https://github.com/ianhouser/esp32-clock/issues/3
-- **PR:** https://github.com/ianhouser/esp32-clock/pull/4
-- **Plan:** `docs/plans/2026-10-04-issue-3-wifi-ntp-timemanager.md`
+- **Issue:** https://github.com/ianhouser/esp32-clock/issues/5
+- **PR:** https://github.com/ianhouser/esp32-clock/pull/6
+- **Plan:** `docs/plans/2026-10-04-issue-5-time-based-dimming.md`
 - **Hardware wiring:** `docs/hardware-guide.md`
+

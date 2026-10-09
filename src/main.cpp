@@ -3,6 +3,7 @@
 #include <TFT_eSPI.h>
 #include "config.h"
 #include "TimeManager.h"
+#include "DisplayManager.h"
 
 // Secure credentials fallback if secrets.h is not yet created
 #if __has_include("secrets.h")
@@ -16,33 +17,33 @@
 #define TIMEZONE_TZ   "PST8PDT,M3.2.0,M11.1.0"
 #endif
 
-// Color definitions (16-bit 565 format)
-#define COLOR_BG          0x0842  // Deep slate navy (RGB 8, 8, 16)
-#define COLOR_CARD_BG     0x10A4  // Dark slate card background
-#define COLOR_CARD_BORDER 0x2969  // Subtle card border
-#define COLOR_CYAN_ACCENT 0x07FD  // Crisp bright cyan
-#define COLOR_AMBER       0xFDA0  // Warm amber for warnings
-#define COLOR_MUTED_TEXT  0x9CD3  // Muted light slate gray
-#define COLOR_HEADER_BG   0x0926  // Deep dark cyan-navy for header
-
 TFT_eSPI tft = TFT_eSPI();
 TimeManager timeManager;
+DisplayManager displayManager;
 
 void drawStaticLayout() {
     int16_t w = tft.width();
     int16_t h = tft.height();
+    const ThemeColors& theme = displayManager.getTheme();
 
     // Background fill
-    tft.fillScreen(COLOR_BG);
+    tft.fillScreen(theme.bg);
 
     // Header banner
-    tft.fillRect(0, 0, w, 28, COLOR_HEADER_BG);
-    tft.drawFastHLine(0, 28, w, COLOR_CARD_BORDER);
+    tft.fillRect(0, 0, w, 28, theme.headerBg);
+    tft.drawFastHLine(0, 28, w, theme.cardBorder);
 
-    tft.setTextColor(TFT_WHITE, COLOR_HEADER_BG);
+    tft.setTextColor(theme.dateColor, theme.headerBg);
     tft.setTextDatum(ML_DATUM);
     tft.setTextFont(2);
     tft.drawString("esp32-clock", 10, 14);
+
+    // Mode Badge (DAY / NIGHT)
+    tft.fillRoundRect(98, 4, 52, 20, 4, theme.modeBadgeBg);
+    tft.setTextColor(theme.modeBadgeText, theme.modeBadgeBg);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextFont(2);
+    tft.drawString(theme.modeLabel, 124, 14);
 
     // Main Clock Card
     const int16_t clockCardX = 8;
@@ -50,8 +51,8 @@ void drawStaticLayout() {
     const int16_t clockCardW = w - 16;
     const int16_t clockCardH = 104;
 
-    tft.fillRoundRect(clockCardX, clockCardY, clockCardW, clockCardH, 6, COLOR_CARD_BG);
-    tft.drawRoundRect(clockCardX, clockCardY, clockCardW, clockCardH, 6, COLOR_CARD_BORDER);
+    tft.fillRoundRect(clockCardX, clockCardY, clockCardW, clockCardH, 6, theme.cardBg);
+    tft.drawRoundRect(clockCardX, clockCardY, clockCardW, clockCardH, 6, theme.cardBorder);
 
     // Info Cards: Network (Left) & Diagnostics (Right)
     const int16_t infoCardY = 144;
@@ -60,25 +61,25 @@ void drawStaticLayout() {
 
     // Network Card
     const int16_t netCardX = 8;
-    tft.fillRoundRect(netCardX, infoCardY, infoCardW, infoCardH, 6, COLOR_CARD_BG);
-    tft.drawRoundRect(netCardX, infoCardY, infoCardW, infoCardH, 6, COLOR_CARD_BORDER);
+    tft.fillRoundRect(netCardX, infoCardY, infoCardW, infoCardH, 6, theme.cardBg);
+    tft.drawRoundRect(netCardX, infoCardY, infoCardW, infoCardH, 6, theme.cardBorder);
 
-    tft.setTextColor(COLOR_CYAN_ACCENT, COLOR_CARD_BG);
+    tft.setTextColor(theme.accentColor, theme.cardBg);
     tft.setTextDatum(TL_DATUM);
     tft.setTextFont(2);
     tft.drawString("NETWORK", netCardX + 8, infoCardY + 6);
-    tft.drawFastHLine(netCardX + 8, infoCardY + 23, infoCardW - 16, COLOR_CARD_BORDER);
+    tft.drawFastHLine(netCardX + 8, infoCardY + 23, infoCardW - 16, theme.cardBorder);
 
     // System/Sync Card
     const int16_t sysCardX = netCardX + infoCardW + 6;
-    tft.fillRoundRect(sysCardX, infoCardY, infoCardW, infoCardH, 6, COLOR_CARD_BG);
-    tft.drawRoundRect(sysCardX, infoCardY, infoCardW, infoCardH, 6, COLOR_CARD_BORDER);
+    tft.fillRoundRect(sysCardX, infoCardY, infoCardW, infoCardH, 6, theme.cardBg);
+    tft.drawRoundRect(sysCardX, infoCardY, infoCardW, infoCardH, 6, theme.cardBorder);
 
-    tft.setTextColor(COLOR_CYAN_ACCENT, COLOR_CARD_BG);
+    tft.setTextColor(theme.accentColor, theme.cardBg);
     tft.setTextDatum(TL_DATUM);
     tft.setTextFont(2);
     tft.drawString("TIME & SYSTEM", sysCardX + 8, infoCardY + 6);
-    tft.drawFastHLine(sysCardX + 8, infoCardY + 23, infoCardW - 16, COLOR_CARD_BORDER);
+    tft.drawFastHLine(sysCardX + 8, infoCardY + 23, infoCardW - 16, theme.cardBorder);
 }
 
 void updateDisplay(bool forceAll = false) {
@@ -88,6 +89,8 @@ void updateDisplay(bool forceAll = false) {
     static int8_t lastRssi = 99;
     static unsigned long lastHeaderUpdate = 0;
     static unsigned long lastInfoUpdate = 0;
+
+    const ThemeColors& theme = displayManager.getTheme();
 
     struct tm timeinfo;
     bool hasLocalTime = timeManager.getLocalTime(timeinfo);
@@ -111,15 +114,15 @@ void updateDisplay(bool forceAll = false) {
             wifiDotColor = TFT_GREEN;
             wifiLabel = "Online";
         } else if (currentState == TimeSyncState::CONNECTING_WIFI) {
-            wifiDotColor = COLOR_AMBER;
+            wifiDotColor = 0xFDA0; // Amber
             wifiLabel = "Connecting";
         }
 
         // Header status area
         tft.setTextDatum(MR_DATUM);
         tft.setTextFont(2);
-        tft.setTextColor(TFT_WHITE, COLOR_HEADER_BG);
-        tft.setTextPadding(140);
+        tft.setTextColor(theme.dateColor, theme.headerBg);
+        tft.setTextPadding(130);
 
         char headerStatus[32];
         if (timeManager.isConnected()) {
@@ -145,12 +148,12 @@ void updateDisplay(bool forceAll = false) {
             snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d",
                      timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
 
-            tft.setTextColor(COLOR_CYAN_ACCENT, COLOR_CARD_BG);
+            tft.setTextColor(theme.timeColor, theme.cardBg);
             tft.setTextPadding(280);
             tft.setTextFont(7); // 48px height 7-segment digital font
             tft.drawString(timeBuf, w / 2, 70);
         } else {
-            tft.setTextColor(COLOR_AMBER, COLOR_CARD_BG);
+            tft.setTextColor(theme.accentColor, theme.cardBg);
             tft.setTextPadding(280);
             tft.setTextFont(7);
             tft.drawString("--:--:--", w / 2, 70);
@@ -160,7 +163,7 @@ void updateDisplay(bool forceAll = false) {
         if (forceAll || currentMinute != lastMinute) {
             lastMinute = currentMinute;
             tft.setTextFont(2);
-            tft.setTextColor(TFT_WHITE, COLOR_CARD_BG);
+            tft.setTextColor(theme.dateColor, theme.cardBg);
             tft.setTextPadding(280);
 
             if (hasLocalTime) {
@@ -187,7 +190,7 @@ void updateDisplay(bool forceAll = false) {
         tft.setTextFont(2);
 
         // --- Left: Network Details ---
-        tft.setTextColor(COLOR_MUTED_TEXT, COLOR_CARD_BG);
+        tft.setTextColor(theme.mutedText, theme.cardBg);
         tft.setTextPadding(infoCardW - 20);
 
         char netBuf[40];
@@ -212,7 +215,7 @@ void updateDisplay(bool forceAll = false) {
         tft.drawString(netBuf, netCardX + 10, infoCardY + 64);
 
         // --- Right: Time & System Details ---
-        tft.setTextColor(COLOR_MUTED_TEXT, COLOR_CARD_BG);
+        tft.setTextColor(theme.mutedText, theme.cardBg);
         tft.setTextPadding(infoCardW - 20);
 
         char sysBuf[40];
@@ -262,6 +265,9 @@ void setup() {
     tft.setRotation(SCREEN_ROTATION);
     tft.invertDisplay(SCREEN_INVERT_DISPLAY); // Panel inversion configured in config.h
 
+    // Initialize Display Manager (schedule & backlight)
+    displayManager.begin();
+
     // Render base frame layout
     drawStaticLayout();
 
@@ -275,6 +281,17 @@ void setup() {
 void loop() {
     // Process WiFi & SNTP state machine
     timeManager.update();
+
+    // Check time-based day/night schedule transition
+    struct tm timeinfo;
+    if (timeManager.getLocalTime(timeinfo)) {
+        bool modeChanged = displayManager.update(timeinfo.tm_hour, timeinfo.tm_min);
+        if (modeChanged) {
+            // Re-render whole frame when transitioning themes
+            drawStaticLayout();
+            updateDisplay(true);
+        }
+    }
 
     // Refresh UI
     updateDisplay(false);
