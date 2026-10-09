@@ -60,6 +60,7 @@ void setup() {
     tft.init();
     tft.setRotation(SCREEN_ROTATION);
     tft.invertDisplay(SCREEN_INVERT_DISPLAY);
+    tft.fillScreen(TFT_BLACK);
 
     // Initialize Display Manager (schedule & backlight)
     displayManager.begin();

@@ -31,10 +31,7 @@ void UIManager::dispFlushCallback(lv_disp_drv_t* disp, const lv_area_t* area, lv
         uint32_t w = (area->x2 - area->x1 + 1);
         uint32_t h = (area->y2 - area->y1 + 1);
 
-        s_tft->startWrite();
-        s_tft->setAddrWindow(area->x1, area->y1, w, h);
-        s_tft->pushColors((uint16_t*)&color_p->full, w * h, true);
-        s_tft->endWrite();
+        s_tft->pushImage(area->x1, area->y1, w, h, (uint16_t*)&color_p->full);
     }
     lv_disp_flush_ready(disp);
 }
@@ -61,6 +58,13 @@ void UIManager::begin(TFT_eSPI* tft) {
 }
 
 void UIManager::loop() {
+    static uint32_t lastTick = 0;
+    uint32_t now = millis();
+    if (lastTick > 0 && now > lastTick) {
+        lv_tick_inc(now - lastTick);
+    }
+    lastTick = now;
+
     lv_timer_handler();
 }
 
@@ -221,15 +225,18 @@ void UIManager::applyThemeStyles(DisplayMode mode) {
 
     // Apply Background
     lv_obj_set_style_bg_color(_scr, colorBg, 0);
+    lv_obj_set_style_bg_opa(_scr, LV_OPA_COVER, 0);
 
     // Apply Header
     lv_obj_set_style_bg_color(_headerBar, colorHeader, 0);
+    lv_obj_set_style_bg_opa(_headerBar, LV_OPA_COVER, 0);
     lv_obj_set_style_border_color(_headerBar, colorBorder, 0);
     lv_obj_set_style_text_color(_lblTitle, colorText, 0);
     lv_obj_set_style_text_color(_lblWifiStatus, colorMuted, 0);
 
     // Apply Badge
     lv_obj_set_style_bg_color(_badgeMode, colorBadgeBg, 0);
+    lv_obj_set_style_bg_opa(_badgeMode, LV_OPA_COVER, 0);
     lv_obj_set_style_border_color(_badgeMode, colorBorder, 0);
     lv_obj_set_style_text_color(_lblBadgeMode, colorBadgeText, 0);
 
@@ -237,6 +244,7 @@ void UIManager::applyThemeStyles(DisplayMode mode) {
     lv_obj_t* cards[] = {_cardClock, _cardWeather, _cardSystem};
     for (lv_obj_t* card : cards) {
         lv_obj_set_style_bg_color(card, colorCard, 0);
+        lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
         lv_obj_set_style_border_color(card, colorBorder, 0);
     }
 

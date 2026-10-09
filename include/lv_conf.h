@@ -27,11 +27,7 @@
  *====================*/
 #define LV_DISP_DEF_REFR_PERIOD 30         /* 30ms refresh period (~33 FPS) */
 #define LV_INDEV_DEF_READ_PERIOD 30        /* 30ms input read period */
-#define LV_TICK_CUSTOM 1
-#if LV_TICK_CUSTOM
-    #define LV_TICK_CUSTOM_INCLUDE "Arduino.h"
-    #define LV_TICK_CUSTOM_SYS_TIME_EXPR (millis())
-#endif
+#define LV_TICK_CUSTOM 0
 
 /*=======================
    FEATURE CONFIGURATION
