@@ -41,6 +41,7 @@
 - **INDEX:** `docs/INDEX.md`
 - **UI Concepts:** `docs/ui-design-concepts.md`
 - **Issue:** https://github.com/ianhouser/esp32-clock/issues/9
+- **PR:** https://github.com/ianhouser/esp32-clock/pull/10
 - **Plan:** `docs/plans/2026-10-09-issue-9-lvgl-modern-dashboard.md`
 - **Hardware wiring:** `docs/hardware-guide.md`
 
