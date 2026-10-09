@@ -4,6 +4,7 @@
 #include "config.h"
 #include "TimeManager.h"
 #include "DisplayManager.h"
+#include "WeatherManager.h"
 
 // Secure credentials fallback if secrets.h is not yet created
 #if __has_include("secrets.h")
@@ -17,9 +18,21 @@
 #define TIMEZONE_TZ   "PST8PDT,M3.2.0,M11.1.0"
 #endif
 
+// Fallbacks for optional custom weather parameters in secrets.h
+#ifndef WEATHER_LAT
+#define WEATHER_LAT DEFAULT_WEATHER_LAT
+#endif
+#ifndef WEATHER_LON
+#define WEATHER_LON DEFAULT_WEATHER_LON
+#endif
+#ifndef WEATHER_USE_FAHR
+#define WEATHER_USE_FAHR DEFAULT_WEATHER_USE_FAHR
+#endif
+
 TFT_eSPI tft = TFT_eSPI();
 TimeManager timeManager;
 DisplayManager displayManager;
+WeatherManager weatherManager;
 
 void drawStaticLayout() {
     int16_t w = tft.width();
@@ -54,31 +67,31 @@ void drawStaticLayout() {
     tft.fillRoundRect(clockCardX, clockCardY, clockCardW, clockCardH, 6, theme.cardBg);
     tft.drawRoundRect(clockCardX, clockCardY, clockCardW, clockCardH, 6, theme.cardBorder);
 
-    // Info Cards: Network (Left) & Diagnostics (Right)
+    // Info Cards: Weather (Left) & System (Right)
     const int16_t infoCardY = 144;
     const int16_t infoCardW = (w - 22) / 2;
     const int16_t infoCardH = h - infoCardY - 8;
 
-    // Network Card
-    const int16_t netCardX = 8;
-    tft.fillRoundRect(netCardX, infoCardY, infoCardW, infoCardH, 6, theme.cardBg);
-    tft.drawRoundRect(netCardX, infoCardY, infoCardW, infoCardH, 6, theme.cardBorder);
+    // Weather Card
+    const int16_t weatherCardX = 8;
+    tft.fillRoundRect(weatherCardX, infoCardY, infoCardW, infoCardH, 6, theme.cardBg);
+    tft.drawRoundRect(weatherCardX, infoCardY, infoCardW, infoCardH, 6, theme.cardBorder);
 
     tft.setTextColor(theme.accentColor, theme.cardBg);
     tft.setTextDatum(TL_DATUM);
     tft.setTextFont(2);
-    tft.drawString("NETWORK", netCardX + 8, infoCardY + 6);
-    tft.drawFastHLine(netCardX + 8, infoCardY + 23, infoCardW - 16, theme.cardBorder);
+    tft.drawString("WEATHER", weatherCardX + 8, infoCardY + 6);
+    tft.drawFastHLine(weatherCardX + 8, infoCardY + 23, infoCardW - 16, theme.cardBorder);
 
-    // System/Sync Card
-    const int16_t sysCardX = netCardX + infoCardW + 6;
+    // System/Network Card
+    const int16_t sysCardX = weatherCardX + infoCardW + 6;
     tft.fillRoundRect(sysCardX, infoCardY, infoCardW, infoCardH, 6, theme.cardBg);
     tft.drawRoundRect(sysCardX, infoCardY, infoCardW, infoCardH, 6, theme.cardBorder);
 
     tft.setTextColor(theme.accentColor, theme.cardBg);
     tft.setTextDatum(TL_DATUM);
     tft.setTextFont(2);
-    tft.drawString("TIME & SYSTEM", sysCardX + 8, infoCardY + 6);
+    tft.drawString("SYSTEM & NET", sysCardX + 8, infoCardY + 6);
     tft.drawFastHLine(sysCardX + 8, infoCardY + 23, infoCardW - 16, theme.cardBorder);
 }
 
@@ -181,61 +194,69 @@ void updateDisplay(bool forceAll = false) {
         lastInfoUpdate = millis();
         lastState = currentState;
 
-        const int16_t netCardX = 8;
+        const int16_t weatherCardX = 8;
         const int16_t infoCardY = 144;
         const int16_t infoCardW = (w - 22) / 2;
-        const int16_t sysCardX = netCardX + infoCardW + 6;
+        const int16_t sysCardX = weatherCardX + infoCardW + 6;
 
         tft.setTextDatum(TL_DATUM);
         tft.setTextFont(2);
 
-        // --- Left: Network Details ---
-        tft.setTextColor(theme.mutedText, theme.cardBg);
+        // --- Left: Weather Details ---
         tft.setTextPadding(infoCardW - 20);
 
-        char netBuf[40];
-        // Line 1: SSID
-        snprintf(netBuf, sizeof(netBuf), "SSID: %.10s", timeManager.getSSID());
-        tft.drawString(netBuf, netCardX + 10, infoCardY + 28);
+        if (weatherManager.hasValidData()) {
+            const WeatherData& wd = weatherManager.getData();
+            char unitChar = weatherManager.isUsingFahrenheit() ? 'F' : 'C';
 
-        // Line 2: IP
-        if (timeManager.isConnected()) {
-            snprintf(netBuf, sizeof(netBuf), "IP: %s", timeManager.getLocalIP().toString().c_str());
+            // Line 1: Temperature & Conditions
+            char line1Buf[40];
+            snprintf(line1Buf, sizeof(line1Buf), "%.0f°%c  %.9s",
+                     wd.temperature, unitChar, wd.conditionText);
+            tft.setTextColor(theme.accentColor, theme.cardBg);
+            tft.drawString(line1Buf, weatherCardX + 10, infoCardY + 28);
+
+            // Line 2: Apparent "Feels like" Temperature
+            char line2Buf[40];
+            snprintf(line2Buf, sizeof(line2Buf), "Feels: %.0f°%c", wd.apparentTemperature, unitChar);
+            tft.setTextColor(theme.mutedText, theme.cardBg);
+            tft.drawString(line2Buf, weatherCardX + 10, infoCardY + 46);
+
+            // Line 3: Humidity
+            char line3Buf[40];
+            snprintf(line3Buf, sizeof(line3Buf), "Humidity: %d%%", wd.humidity);
+            tft.drawString(line3Buf, weatherCardX + 10, infoCardY + 64);
         } else {
-            snprintf(netBuf, sizeof(netBuf), "IP: Disconnected");
+            tft.setTextColor(theme.mutedText, theme.cardBg);
+            const char* status = timeManager.isConnected() ? "Fetching..." : "Awaiting WiFi";
+            tft.drawString(status, weatherCardX + 10, infoCardY + 28);
+            tft.drawString("Open-Meteo REST", weatherCardX + 10, infoCardY + 46);
+            tft.drawString("Telemetry Link", weatherCardX + 10, infoCardY + 64);
         }
-        tft.drawString(netBuf, netCardX + 10, infoCardY + 46);
 
-        // Line 3: RSSI & State
-        if (timeManager.isConnected()) {
-            snprintf(netBuf, sizeof(netBuf), "Sig: %d dBm", timeManager.getRSSI());
-        } else {
-            snprintf(netBuf, sizeof(netBuf), "St: %s", timeManager.getStateString());
-        }
-        tft.drawString(netBuf, netCardX + 10, infoCardY + 64);
-
-        // --- Right: Time & System Details ---
+        // --- Right: System & Network Details ---
         tft.setTextColor(theme.mutedText, theme.cardBg);
         tft.setTextPadding(infoCardW - 20);
 
         char sysBuf[40];
-        // Line 1: NTP Sync Status
+        // Line 1: SSID
+        snprintf(sysBuf, sizeof(sysBuf), "WiFi: %.10s", timeManager.getSSID());
+        tft.drawString(sysBuf, sysCardX + 10, infoCardY + 28);
+
+        // Line 2: IP
+        if (timeManager.isConnected()) {
+            snprintf(sysBuf, sizeof(sysBuf), "IP: %s", timeManager.getLocalIP().toString().c_str());
+        } else {
+            snprintf(sysBuf, sizeof(sysBuf), "IP: Disconnected");
+        }
+        tft.drawString(sysBuf, sysCardX + 10, infoCardY + 46);
+
+        // Line 3: NTP Sync Status
         if (timeManager.isSynchronized()) {
             snprintf(sysBuf, sizeof(sysBuf), "Sync: Locked (NTP)");
         } else {
             snprintf(sysBuf, sizeof(sysBuf), "Sync: %s", timeManager.getStateString());
         }
-        tft.drawString(sysBuf, sysCardX + 10, infoCardY + 28);
-
-        // Line 2: Free Heap
-        snprintf(sysBuf, sizeof(sysBuf), "Heap: %u KB", (unsigned int)(ESP.getFreeHeap() / 1024));
-        tft.drawString(sysBuf, sysCardX + 10, infoCardY + 46);
-
-        // Line 3: Uptime
-        uint32_t sec = millis() / 1000;
-        uint32_t min = sec / 60;
-        uint32_t hrs = min / 60;
-        snprintf(sysBuf, sizeof(sysBuf), "Up: %02u:%02u:%02u", hrs, min % 60, sec % 60);
         tft.drawString(sysBuf, sysCardX + 10, infoCardY + 64);
     }
 }
@@ -248,7 +269,7 @@ void setup() {
     }
 
     Serial.println("\n==============================================");
-    Serial.println("  esp32-clock — WiFi & NTP Digital Clock");
+    Serial.println("  esp32-clock — WiFi, NTP & Weather Digital Clock");
     Serial.println("==============================================");
 
     // Explicit hardware reset pulse to ensure ST7789 wakes up
@@ -268,6 +289,9 @@ void setup() {
     // Initialize Display Manager (schedule & backlight)
     displayManager.begin();
 
+    // Initialize Weather Manager with coordinates & units
+    weatherManager.begin(WEATHER_LAT, WEATHER_LON, WEATHER_USE_FAHR);
+
     // Render base frame layout
     drawStaticLayout();
 
@@ -281,6 +305,12 @@ void setup() {
 void loop() {
     // Process WiFi & SNTP state machine
     timeManager.update();
+
+    // Poll Open-Meteo weather when online (non-blocking)
+    bool newWeatherData = weatherManager.update(timeManager.isConnected());
+    if (newWeatherData) {
+        updateDisplay(true); // Redraw info cards with fresh weather telemetry
+    }
 
     // Check time-based day/night schedule transition
     struct tm timeinfo;

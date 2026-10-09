@@ -1,45 +1,48 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-09 08:48 PDT — Antigravity (PR #6 merged, physical hardware verified running live clock)
+**Last updated:** 2026-10-09 08:58 PDT — Antigravity (Issue #7 weather telemetry implemented and verified)
 
 ## Current Focus
 
 - **Milestone:** [v0.1-mvp](https://github.com/ianhouser/esp32-clock/milestone/1)
-- **Task:** Task 4: Live Weather Telemetry Ingestion (Open-Meteo REST API)
+- **Task:** Task 4: Live Weather Telemetry Ingestion (Issue #7)
 - **Blockers:** None
 
 ## Last Three Decisions
 
-1. Configured `.clangd` compilation database to resolve IDE Arduino/ESP32 framework intellisense diagnostics — 2026-10-09
-2. Verified live clock firmware on physical ESP32-C3 hardware (NTP synchronized, WiFi connected, day/night face active) and merged PR #6 — 2026-10-09
-3. Implemented dual-mode dimming architecture: zero-hardware software color palette shifting and portable ESP32 LEDC PWM backlight control — 2026-10-04
+1. Integrated Open-Meteo REST API over plain HTTP to eliminate mbedTLS heap overhead and parsed WMO condition codes with ArduinoJson — 2026-10-09
+2. Redesigned bottom display row into dual-card layout: dedicated WEATHER card on left and condensed SYSTEM & NET card on right — 2026-10-09
+3. Configured `.clangd` compilation database to resolve IDE Arduino/ESP32 framework intellisense diagnostics — 2026-10-09
 
 ## What Just Happened
 
-- Resolved IDE language server / IntelliSense errors by generating `compile_commands.json` and `.clangd` configuration
-- User configured `include/secrets.h` and flashed ESP32-C3 via `pio run --target upload`
-- Verified live physical operation: network connected, NTP synchronized, and digital clock face active
-- Squashed and merged [PR #6](https://github.com/ianhouser/esp32-clock/pull/6) into `main` and closed Issue [#5](https://github.com/ianhouser/esp32-clock/issues/5)
-- Synced local workspace to latest `main`
+- Created Issue [#7](https://github.com/ianhouser/esp32-clock/issues/7) (`feat: live weather telemetry ingestion via Open-Meteo REST API`)
+- Checked out feature branch `feat/#7-weather-telemetry`
+- Authored implementation plan `docs/plans/2026-10-09-issue-7-weather-telemetry.md`
+- Added `bblanchon/ArduinoJson@^7.0.0` dependency to `platformio.ini`
+- Implemented modular `WeatherManager` (`include/WeatherManager.h`, `src/WeatherManager.cpp`)
+- Added weather parameters to `include/config.h` and override template in `include/secrets.h.example`
+- Integrated `WeatherManager` into `src/main.cpp` with dedicated WEATHER card and non-blocking 15-minute polling
+- Verified clean build with `pio run` (41.0 KB RAM / 937 KB Flash, 0 errors)
+- Updated `docs/INDEX.md`
 
 ## Next Up
 
-1. Create GitHub issue and implementation plan for Task 4: Live Weather Telemetry Ingestion (Open-Meteo REST API)
-2. Checkout feature branch `feat/#7-weather-telemetry`
-3. Integrate non-blocking HTTP REST client with ArduinoJson to fetch outdoor temperature, humidity, and condition code
-4. Render live weather telemetry card on ST7789 display alongside existing time & network cards
+1. Commit and push feature branch `feat/#7-weather-telemetry` to origin and open Pull Request for Issue #7
+2. Upload firmware to physical ESP32-C3 hardware (`pio run --target upload`) to verify live weather telemetry
+3. Review and merge PR into `main`
 
 ## Open Risks / Watch List
 
-- Ensure weather HTTP fetch intervals are non-blocking and throttled (e.g. every 15–30 minutes) to avoid WiFi task starvation or API rate limits
-- Maintain low heap footprint when parsing JSON payloads with ArduinoJson
+- Ensure weather HTTP fetch intervals remain non-blocking (4.5s HTTP timeout) to avoid UI stutters
+- Open-Meteo free tier permits up to 10,000 queries/day (15-min interval consumes ~96 queries/day, well within limits)
 - 7-pin GMT020-02-7P TFT module connects backlight directly to VCC; software color palette dimming is active
 
 ## Pointers
 
 - **INDEX:** `docs/INDEX.md`
-- **Issue:** https://github.com/ianhouser/esp32-clock/issues/5
-- **PR:** https://github.com/ianhouser/esp32-clock/pull/6
-- **Plan:** `docs/plans/2026-10-04-issue-5-time-based-dimming.md`
+- **Issue:** https://github.com/ianhouser/esp32-clock/issues/7
+- **Plan:** `docs/plans/2026-10-09-issue-7-weather-telemetry.md`
 - **Hardware wiring:** `docs/hardware-guide.md`
+
 

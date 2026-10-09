@@ -34,6 +34,13 @@
 #define PWM_BL_DAY_DUTY    255
 #define PWM_BL_NIGHT_DUTY   38   // ~15% duty for dark environments
 
+// Weather Telemetry Configuration (Open-Meteo REST API)
+#define DEFAULT_WEATHER_LAT           37.7749f   // Default: San Francisco, CA
+#define DEFAULT_WEATHER_LON          -122.4194f
+#define DEFAULT_WEATHER_USE_FAHR      true       // true = Fahrenheit (°F), false = Celsius (°C)
+#define WEATHER_UPDATE_INTERVAL_MS    (15 * 60 * 1000UL) // 15 minutes between API queries
+#define WEATHER_RETRY_INTERVAL_MS     (60 * 1000UL)      // 1 minute retry on failure
+
 // Reserved Pins for Future Expansions
 // #define PIN_LED_DATA   0  // Future: WS2812B RGBIC LED
 // #define PIN_LIGHT_ADC  1  // Future: Ambient Light Sensor (ADC)
