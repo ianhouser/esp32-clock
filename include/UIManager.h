@@ -18,8 +18,8 @@ public:
 
     // Reactive data update APIs
     void updateTime(const char* timeStr, const char* ampmStr, const char* dateStr);
-    void updateWeather(const WeatherData& data, bool isFahrenheit, bool isWiFiConnected);
-    void updateNetwork(const char* ssid, const char* ip, int8_t rssi, bool connected, const char* syncState);
+    void updateWeather(const WeatherData& data, bool isFahrenheit, int todayWeekday);
+    void updateNetwork(const char* ssid, const char* ip, int8_t rssi, bool connected, const char* syncState) {}
     void setTheme(DisplayMode mode);
 
     // Framebuffer Capture over Serial
@@ -43,20 +43,15 @@ private:
 
     // UI Widgets
     lv_obj_t* _scr;
-    lv_obj_t* _headerBar;
-    lv_obj_t* _lblTitle;
-    lv_obj_t* _badgeMode;
-    lv_obj_t* _lblBadgeMode;
-    lv_obj_t* _badgeWifi;
-    lv_obj_t* _lblWifiStatus;
 
+    // 1. Hero Clock Card (Top)
     lv_obj_t* _cardClock;
     lv_obj_t* _lblTime;
     lv_obj_t* _badgeAmPm;
     lv_obj_t* _lblAmPm;
     lv_obj_t* _lblDate;
 
-    lv_obj_t* _bottomContainer;
+    // 2. Current Weather Card (Bottom Left)
     lv_obj_t* _cardWeather;
     lv_obj_t* _iconWeather;
     lv_obj_t* _lblWeatherTemp;
@@ -64,11 +59,17 @@ private:
     lv_obj_t* _lblWeatherHighLow;
     lv_obj_t* _lblWeatherMetrics;
 
-    lv_obj_t* _cardSystem;
-    lv_obj_t* _lblSystemTitle;
-    lv_obj_t* _lblSystemSsid;
-    lv_obj_t* _lblSystemIp;
-    lv_obj_t* _lblSystemSync;
+    // 3. 2-Day Forecast Card (Bottom Right)
+    lv_obj_t* _cardForecast;
+    lv_obj_t* _lblForecastTitle;
+
+    lv_obj_t* _lblDay1Name;
+    lv_obj_t* _iconDay1;
+    lv_obj_t* _lblDay1HighLow;
+
+    lv_obj_t* _lblDay2Name;
+    lv_obj_t* _iconDay2;
+    lv_obj_t* _lblDay2HighLow;
 
     // Theme Styles
     lv_style_t _styleScr;

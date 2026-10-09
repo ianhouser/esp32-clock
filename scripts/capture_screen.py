@@ -137,6 +137,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", help="Serial port (auto-detect if omitted)")
     parser.add_argument("--mode", choices=["day", "night", "auto"], help="Set mode before capturing")
     parser.add_argument("--out", default="artifacts/screen_capture.png", help="Output PNG file path")
+    parser.add_argument("--keep-mode", action="store_true", help="Do not restore auto mode after capture")
     args = parser.parse_args()
 
     port = args.port or find_serial_port()
@@ -145,3 +146,8 @@ if __name__ == "__main__":
         set_device_mode(port, args.mode)
 
     capture_screen(port=port, output_path=args.out)
+
+    # If a temporary mode was forced and --keep-mode was not passed, return device to auto schedule
+    if args.mode and args.mode != "auto" and not args.keep_mode:
+        print("[capture] Restoring auto schedule on device...")
+        set_device_mode(port, "auto")

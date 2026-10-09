@@ -3,6 +3,13 @@
 #include <Arduino.h>
 #include "config.h"
 
+struct ForecastDay {
+    float tempMax = 0.0f;
+    float tempMin = 0.0f;
+    int weatherCode = 0;
+    bool isValid = false;
+};
+
 struct WeatherData {
     float temperature = 0.0f;
     float apparentTemperature = 0.0f;
@@ -14,6 +21,9 @@ struct WeatherData {
     const char* statusText = "Initializing...";
     bool isValid = false;
     unsigned long lastFetchTime = 0;
+
+    // Daily Forecast for next 2 days (index 0 = tomorrow, index 1 = day after)
+    ForecastDay forecast[2];
 };
 
 class WeatherManager {

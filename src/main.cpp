@@ -82,9 +82,11 @@ void loop() {
     // Poll Open-Meteo weather when online (non-blocking)
     bool newWeatherData = weatherManager.update(timeManager.isConnected());
     if (newWeatherData) {
+        struct tm curTime;
+        int currentWday = timeManager.getLocalTime(curTime) ? curTime.tm_wday : 0;
         uiManager.updateWeather(weatherManager.getData(),
                                 weatherManager.isUsingFahrenheit(),
-                                timeManager.isConnected());
+                                currentWday);
     }
 
     // Process Serial Commands (theme toggle, screen capture)
@@ -148,9 +150,10 @@ void loop() {
     if (millis() - lastTelemetryUpdate >= 1000) {
         lastTelemetryUpdate = millis();
 
+        int currentWday = hasLocalTime ? timeinfo.tm_wday : 0;
         uiManager.updateWeather(weatherManager.getData(),
                                 weatherManager.isUsingFahrenheit(),
-                                timeManager.isConnected());
+                                currentWday);
 
         uiManager.updateNetwork(timeManager.getSSID(),
                                 timeManager.getLocalIP().toString().c_str(),

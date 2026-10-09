@@ -6,29 +6,25 @@ UIManager::UIManager()
     : _tft(nullptr),
       _currentMode(DisplayMode::DAY),
       _scr(nullptr),
-      _headerBar(nullptr),
-      _lblTitle(nullptr),
-      _badgeMode(nullptr),
-      _lblBadgeMode(nullptr),
-      _badgeWifi(nullptr),
-      _lblWifiStatus(nullptr),
       _cardClock(nullptr),
       _lblTime(nullptr),
       _badgeAmPm(nullptr),
       _lblAmPm(nullptr),
       _lblDate(nullptr),
-      _bottomContainer(nullptr),
       _cardWeather(nullptr),
       _iconWeather(nullptr),
       _lblWeatherTemp(nullptr),
       _lblWeatherDesc(nullptr),
       _lblWeatherHighLow(nullptr),
       _lblWeatherMetrics(nullptr),
-      _cardSystem(nullptr),
-      _lblSystemTitle(nullptr),
-      _lblSystemSsid(nullptr),
-      _lblSystemIp(nullptr),
-      _lblSystemSync(nullptr) {}
+      _cardForecast(nullptr),
+      _lblForecastTitle(nullptr),
+      _lblDay1Name(nullptr),
+      _iconDay1(nullptr),
+      _lblDay1HighLow(nullptr),
+      _lblDay2Name(nullptr),
+      _iconDay2(nullptr),
+      _lblDay2HighLow(nullptr) {}
 
 static bool s_captureActive = false;
 static uint32_t s_capturePixelCount = 0;
@@ -219,52 +215,12 @@ void UIManager::buildDashboard() {
     _scr = lv_scr_act();
     lv_obj_clear_flag(_scr, LV_OBJ_FLAG_SCROLLABLE);
 
-    // 1. Top Status Bar (Y: 0..26)
-    _headerBar = lv_obj_create(_scr);
-    lv_obj_set_pos(_headerBar, 0, 0);
-    lv_obj_set_size(_headerBar, 320, 26);
-    lv_obj_clear_flag(_headerBar, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(_headerBar, 0, 0);
-    lv_obj_set_style_border_side(_headerBar, LV_BORDER_SIDE_NONE, 0);
-    lv_obj_set_style_pad_hor(_headerBar, 8, 0);
-    lv_obj_set_style_pad_ver(_headerBar, 2, 0);
-
-    // Day/Night Mode Chip
-    _badgeMode = lv_obj_create(_headerBar);
-    lv_obj_set_size(_badgeMode, 58, 20);
-    lv_obj_set_style_radius(_badgeMode, 10, 0);
-    lv_obj_align(_badgeMode, LV_ALIGN_LEFT_MID, 0, 0);
-    lv_obj_clear_flag(_badgeMode, LV_OBJ_FLAG_SCROLLABLE);
-
-    _lblBadgeMode = lv_label_create(_badgeMode);
-    lv_label_set_text(_lblBadgeMode, "DAY");
-    lv_obj_set_style_text_font(_lblBadgeMode, &lv_font_montserrat_12, 0);
-    lv_obj_center(_lblBadgeMode);
-
-    // App Title
-    _lblTitle = lv_label_create(_headerBar);
-    lv_label_set_text(_lblTitle, "esp32-clock");
-    lv_obj_set_style_text_font(_lblTitle, &lv_font_montserrat_14, 0);
-    lv_obj_align(_lblTitle, LV_ALIGN_CENTER, 0, 0);
-
-    // WiFi Status Chip
-    _badgeWifi = lv_obj_create(_headerBar);
-    lv_obj_set_size(_badgeWifi, 90, 20);
-    lv_obj_set_style_radius(_badgeWifi, 10, 0);
-    lv_obj_align(_badgeWifi, LV_ALIGN_RIGHT_MID, 0, 0);
-    lv_obj_clear_flag(_badgeWifi, LV_OBJ_FLAG_SCROLLABLE);
-
-    _lblWifiStatus = lv_label_create(_badgeWifi);
-    lv_label_set_text(_lblWifiStatus, "Offline");
-    lv_obj_set_style_text_font(_lblWifiStatus, &lv_font_montserrat_12, 0);
-    lv_obj_center(_lblWifiStatus);
-
-    // 2. Hero Clock Card (Y: 28..126, H: 98, W: 304, Radius: 14)
+    // 1. Hero Clock Card (Y: 8..112, H: 104, W: 304, Radius: 16)
     _cardClock = lv_obj_create(_scr);
-    lv_obj_set_pos(_cardClock, 8, 28);
-    lv_obj_set_size(_cardClock, 304, 98);
+    lv_obj_set_pos(_cardClock, 8, 8);
+    lv_obj_set_size(_cardClock, 304, 104);
     lv_obj_clear_flag(_cardClock, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(_cardClock, 14, 0);
+    lv_obj_set_style_radius(_cardClock, 16, 0);
     lv_obj_set_style_border_width(_cardClock, 1, 0);
     lv_obj_set_style_pad_all(_cardClock, 6, 0);
 
@@ -272,7 +228,7 @@ void UIManager::buildDashboard() {
     _lblTime = lv_label_create(_cardClock);
     lv_label_set_text(_lblTime, "--:--:--");
     lv_obj_set_style_text_font(_lblTime, &lv_font_montserrat_48, 0);
-    lv_obj_align(_lblTime, LV_ALIGN_TOP_MID, -20, 2);
+    lv_obj_align(_lblTime, LV_ALIGN_TOP_MID, -22, 6);
 
     // AM/PM Pill Chip
     _badgeAmPm = lv_obj_create(_cardClock);
@@ -291,21 +247,20 @@ void UIManager::buildDashboard() {
     _lblDate = lv_label_create(_cardClock);
     lv_label_set_text(_lblDate, "Awaiting NTP Synchronization...");
     lv_obj_set_style_text_font(_lblDate, &lv_font_montserrat_14, 0);
-    lv_obj_align(_lblDate, LV_ALIGN_BOTTOM_MID, 0, -4);
+    lv_obj_align(_lblDate, LV_ALIGN_BOTTOM_MID, 0, -6);
 
-    // 3. Bottom Row Cards (Y: 132..232, H: 100)
-    // Left: Weather Card (W: 149, Radius: 14)
+    // 2. Current Weather Card (Y: 120..232, H: 112, W: 148, Radius: 16)
     _cardWeather = lv_obj_create(_scr);
-    lv_obj_set_pos(_cardWeather, 8, 132);
-    lv_obj_set_size(_cardWeather, 149, 100);
+    lv_obj_set_pos(_cardWeather, 8, 120);
+    lv_obj_set_size(_cardWeather, 148, 112);
     lv_obj_clear_flag(_cardWeather, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(_cardWeather, 14, 0);
+    lv_obj_set_style_radius(_cardWeather, 16, 0);
     lv_obj_set_style_border_width(_cardWeather, 1, 0);
     lv_obj_set_style_pad_all(_cardWeather, 6, 0);
 
     // Weather Icon Container
     _iconWeather = lv_obj_create(_cardWeather);
-    lv_obj_set_pos(_iconWeather, 2, 2);
+    lv_obj_set_pos(_iconWeather, 4, 4);
     lv_obj_set_size(_iconWeather, 28, 28);
     lv_obj_clear_flag(_iconWeather, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(_iconWeather, LV_OPA_TRANSP, 0);
@@ -315,116 +270,115 @@ void UIManager::buildDashboard() {
     _lblWeatherTemp = lv_label_create(_cardWeather);
     lv_label_set_text(_lblWeatherTemp, "--°F");
     lv_obj_set_style_text_font(_lblWeatherTemp, &lv_font_montserrat_24, 0);
-    lv_obj_set_pos(_lblWeatherTemp, 36, 4);
+    lv_obj_set_pos(_lblWeatherTemp, 38, 4);
 
     // Condition Text
     _lblWeatherDesc = lv_label_create(_cardWeather);
     lv_label_set_text(_lblWeatherDesc, "Loading...");
     lv_obj_set_style_text_font(_lblWeatherDesc, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(_lblWeatherDesc, 4, 34);
+    lv_obj_set_pos(_lblWeatherDesc, 4, 38);
 
-    // Daily High / Low Temperatures
+    // Daily High / Low Temperatures (ASCII format)
     _lblWeatherHighLow = lv_label_create(_cardWeather);
-    lv_label_set_text(_lblWeatherHighLow, "H: --°  L: --°");
+    lv_label_set_text(_lblWeatherHighLow, "H: --° / L: --°");
     lv_obj_set_style_text_font(_lblWeatherHighLow, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(_lblWeatherHighLow, 4, 52);
+    lv_obj_set_pos(_lblWeatherHighLow, 4, 60);
 
-    // Feels Like & Humidity
+    // Feels Like & Humidity (ASCII format)
     _lblWeatherMetrics = lv_label_create(_cardWeather);
-    lv_label_set_text(_lblWeatherMetrics, "Feels --° · --% Hum");
+    lv_label_set_text(_lblWeatherMetrics, "Feels --° | --% Hum");
     lv_obj_set_style_text_font(_lblWeatherMetrics, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(_lblWeatherMetrics, 4, 70);
+    lv_obj_set_pos(_lblWeatherMetrics, 4, 82);
 
-    // Right: System & Network Card (W: 149, Radius: 14)
-    _cardSystem = lv_obj_create(_scr);
-    lv_obj_set_pos(_cardSystem, 163, 132);
-    lv_obj_set_size(_cardSystem, 149, 100);
-    lv_obj_clear_flag(_cardSystem, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(_cardSystem, 14, 0);
-    lv_obj_set_style_border_width(_cardSystem, 1, 0);
-    lv_obj_set_style_pad_all(_cardSystem, 6, 0);
+    // 3. 2-Day Forecast Card (Y: 120..232, H: 112, W: 148, Radius: 16)
+    _cardForecast = lv_obj_create(_scr);
+    lv_obj_set_pos(_cardForecast, 164, 120);
+    lv_obj_set_size(_cardForecast, 148, 112);
+    lv_obj_clear_flag(_cardForecast, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(_cardForecast, 16, 0);
+    lv_obj_set_style_border_width(_cardForecast, 1, 0);
+    lv_obj_set_style_pad_all(_cardForecast, 6, 0);
 
-    _lblSystemTitle = lv_label_create(_cardSystem);
-    lv_label_set_text(_lblSystemTitle, "SYSTEM & NET");
-    lv_obj_set_style_text_font(_lblSystemTitle, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(_lblSystemTitle, 4, 4);
+    _lblForecastTitle = lv_label_create(_cardForecast);
+    lv_label_set_text(_lblForecastTitle, "2-DAY FORECAST");
+    lv_obj_set_style_text_font(_lblForecastTitle, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblForecastTitle, 4, 4);
 
-    _lblSystemSsid = lv_label_create(_cardSystem);
-    lv_label_set_text(_lblSystemSsid, "WiFi: --");
-    lv_obj_set_style_text_font(_lblSystemSsid, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(_lblSystemSsid, 4, 28);
+    // Forecast Day 1 (Tomorrow)
+    _lblDay1Name = lv_label_create(_cardForecast);
+    lv_label_set_text(_lblDay1Name, "Tomorrow");
+    lv_obj_set_style_text_font(_lblDay1Name, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblDay1Name, 4, 34);
 
-    _lblSystemIp = lv_label_create(_cardSystem);
-    lv_label_set_text(_lblSystemIp, "IP: Disconnected");
-    lv_obj_set_style_text_font(_lblSystemIp, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(_lblSystemIp, 4, 48);
+    _iconDay1 = lv_obj_create(_cardForecast);
+    lv_obj_set_pos(_iconDay1, 38, 28);
+    lv_obj_set_size(_iconDay1, 24, 24);
+    lv_obj_clear_flag(_iconDay1, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(_iconDay1, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(_iconDay1, 0, 0);
 
-    _lblSystemSync = lv_label_create(_cardSystem);
-    lv_label_set_text(_lblSystemSync, "Sync: Idle");
-    lv_obj_set_style_text_font(_lblSystemSync, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(_lblSystemSync, 4, 68);
+    _lblDay1HighLow = lv_label_create(_cardForecast);
+    lv_label_set_text(_lblDay1HighLow, "--° / --°");
+    lv_obj_set_style_text_font(_lblDay1HighLow, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblDay1HighLow, 68, 34);
+
+    // Forecast Day 2 (Day after)
+    _lblDay2Name = lv_label_create(_cardForecast);
+    lv_label_set_text(_lblDay2Name, "Day After");
+    lv_obj_set_style_text_font(_lblDay2Name, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblDay2Name, 4, 74);
+
+    _iconDay2 = lv_obj_create(_cardForecast);
+    lv_obj_set_pos(_iconDay2, 38, 68);
+    lv_obj_set_size(_iconDay2, 24, 24);
+    lv_obj_clear_flag(_iconDay2, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(_iconDay2, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(_iconDay2, 0, 0);
+
+    _lblDay2HighLow = lv_label_create(_cardForecast);
+    lv_label_set_text(_lblDay2HighLow, "--° / --°");
+    lv_obj_set_style_text_font(_lblDay2HighLow, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblDay2HighLow, 68, 74);
 }
 
 void UIManager::applyThemeStyles(DisplayMode mode) {
     _currentMode = mode;
 
-    lv_color_t colorBg, colorHeader, colorCard, colorBorder, colorAccent, colorText, colorMuted, colorBadgeBg, colorBadgeText;
+    lv_color_t colorBg, colorCard, colorBorder, colorAccent, colorText, colorMuted, colorBadgeBg;
 
     if (mode == DisplayMode::NIGHT) {
         // Night Theme: Pure black, warm amber bedside glow
         colorBg        = lv_color_make(0, 0, 0);
-        colorHeader    = lv_color_make(0, 0, 0);
         colorCard      = lv_color_make(18, 12, 10);
         colorBorder    = lv_color_make(45, 20, 16);
         colorAccent    = lv_color_make(255, 152, 0);
         colorText      = lv_color_make(226, 160, 100);
         colorMuted     = lv_color_make(140, 86, 56);
         colorBadgeBg   = lv_color_make(42, 20, 8);
-        colorBadgeText = lv_color_make(255, 152, 0);
-        lv_label_set_text(_lblBadgeMode, "NIGHT");
     } else {
         // Day Theme (Material 3 Dark Modern Obsidian/Cyan)
         colorBg        = lv_color_make(15, 19, 24);
-        colorHeader    = lv_color_make(15, 19, 24);
         colorCard      = lv_color_make(24, 28, 36);
         colorBorder    = lv_color_make(40, 48, 61);
         colorAccent    = lv_color_make(56, 189, 248);
         colorText      = lv_color_make(241, 245, 249);
         colorMuted     = lv_color_make(148, 163, 184);
         colorBadgeBg   = lv_color_make(30, 41, 59);
-        colorBadgeText = lv_color_make(56, 189, 248);
-        lv_label_set_text(_lblBadgeMode, "DAY");
     }
 
-    // Apply Background
+    // Apply Canvas Background
     lv_obj_set_style_bg_color(_scr, colorBg, 0);
     lv_obj_set_style_bg_opa(_scr, LV_OPA_COVER, 0);
 
-    // Apply Header
-    lv_obj_set_style_bg_color(_headerBar, colorHeader, 0);
-    lv_obj_set_style_bg_opa(_headerBar, LV_OPA_COVER, 0);
-    lv_obj_set_style_text_color(_lblTitle, colorMuted, 0);
-
-    // Apply Badges
-    lv_obj_set_style_bg_color(_badgeMode, colorBadgeBg, 0);
-    lv_obj_set_style_bg_opa(_badgeMode, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(_badgeMode, colorBorder, 0);
-    lv_obj_set_style_text_color(_lblBadgeMode, colorBadgeText, 0);
-
-    lv_obj_set_style_bg_color(_badgeWifi, colorBadgeBg, 0);
-    lv_obj_set_style_bg_opa(_badgeWifi, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(_badgeWifi, colorBorder, 0);
-    lv_obj_set_style_text_color(_lblWifiStatus, colorBadgeText, 0);
-
     // Apply Cards
-    lv_obj_t* cards[] = {_cardClock, _cardWeather, _cardSystem};
+    lv_obj_t* cards[] = {_cardClock, _cardWeather, _cardForecast};
     for (lv_obj_t* card : cards) {
         lv_obj_set_style_bg_color(card, colorCard, 0);
         lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
         lv_obj_set_style_border_color(card, colorBorder, 0);
     }
 
-    // Apply Clock text & AM/PM chip
+    // Apply Hero Clock text & AM/PM chip
     lv_obj_set_style_text_color(_lblTime, colorAccent, 0);
     lv_obj_set_style_text_color(_lblDate, colorText, 0);
 
@@ -433,17 +387,18 @@ void UIManager::applyThemeStyles(DisplayMode mode) {
     lv_obj_set_style_border_color(_badgeAmPm, colorBorder, 0);
     lv_obj_set_style_text_color(_lblAmPm, colorAccent, 0);
 
-    // Apply Weather Card elements
+    // Apply Current Weather Card elements
     lv_obj_set_style_text_color(_lblWeatherTemp, colorText, 0);
     lv_obj_set_style_text_color(_lblWeatherDesc, colorAccent, 0);
     lv_obj_set_style_text_color(_lblWeatherHighLow, colorText, 0);
     lv_obj_set_style_text_color(_lblWeatherMetrics, colorMuted, 0);
 
-    // Apply System Card elements
-    lv_obj_set_style_text_color(_lblSystemTitle, colorAccent, 0);
-    lv_obj_set_style_text_color(_lblSystemSsid, colorMuted, 0);
-    lv_obj_set_style_text_color(_lblSystemIp, colorMuted, 0);
-    lv_obj_set_style_text_color(_lblSystemSync, colorMuted, 0);
+    // Apply 2-Day Forecast Card elements
+    lv_obj_set_style_text_color(_lblForecastTitle, colorAccent, 0);
+    lv_obj_set_style_text_color(_lblDay1Name, colorText, 0);
+    lv_obj_set_style_text_color(_lblDay1HighLow, colorMuted, 0);
+    lv_obj_set_style_text_color(_lblDay2Name, colorText, 0);
+    lv_obj_set_style_text_color(_lblDay2HighLow, colorMuted, 0);
 }
 
 void UIManager::setTheme(DisplayMode mode) {
@@ -463,8 +418,10 @@ void UIManager::updateTime(const char* timeStr, const char* ampmStr, const char*
     }
 }
 
-void UIManager::updateWeather(const WeatherData& data, bool isFahrenheit, bool isWiFiConnected) {
-    if (!_cardWeather) return;
+void UIManager::updateWeather(const WeatherData& data, bool isFahrenheit, int todayWeekday) {
+    if (!_cardWeather || !_cardForecast) return;
+
+    static const char* const DAY_NAMES[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 
     if (data.isValid) {
         char tempBuf[16];
@@ -473,8 +430,8 @@ void UIManager::updateWeather(const WeatherData& data, bool isFahrenheit, bool i
         char unit = isFahrenheit ? 'F' : 'C';
 
         snprintf(tempBuf, sizeof(tempBuf), "%.0f°%c", data.temperature, unit);
-        snprintf(highLowBuf, sizeof(highLowBuf), "H: %.0f° · L: %.0f°", data.tempMax, data.tempMin);
-        snprintf(metricsBuf, sizeof(metricsBuf), "Feels %.0f° · %d%% Hum", data.apparentTemperature, data.humidity);
+        snprintf(highLowBuf, sizeof(highLowBuf), "H: %.0f° / L: %.0f°", data.tempMax, data.tempMin);
+        snprintf(metricsBuf, sizeof(metricsBuf), "Feels %.0f° | %d%% Hum", data.apparentTemperature, data.humidity);
 
         lv_label_set_text(_lblWeatherTemp, tempBuf);
         lv_label_set_text(_lblWeatherDesc, data.conditionText);
@@ -482,37 +439,32 @@ void UIManager::updateWeather(const WeatherData& data, bool isFahrenheit, bool i
         lv_label_set_text(_lblWeatherMetrics, metricsBuf);
 
         renderWeatherIcon(_iconWeather, data.weatherCode, _currentMode == DisplayMode::NIGHT);
+
+        // Update 2-Day Forecast
+        int day1Idx = (todayWeekday + 1) % 7;
+        int day2Idx = (todayWeekday + 2) % 7;
+        lv_label_set_text(_lblDay1Name, DAY_NAMES[day1Idx]);
+        lv_label_set_text(_lblDay2Name, DAY_NAMES[day2Idx]);
+
+        if (data.forecast[0].isValid) {
+            char f1Buf[24];
+            snprintf(f1Buf, sizeof(f1Buf), "%.0f° / %.0f°", data.forecast[0].tempMax, data.forecast[0].tempMin);
+            lv_label_set_text(_lblDay1HighLow, f1Buf);
+            renderWeatherIcon(_iconDay1, data.forecast[0].weatherCode, false);
+        }
+
+        if (data.forecast[1].isValid) {
+            char f2Buf[24];
+            snprintf(f2Buf, sizeof(f2Buf), "%.0f° / %.0f°", data.forecast[1].tempMax, data.forecast[1].tempMin);
+            lv_label_set_text(_lblDay2HighLow, f2Buf);
+            renderWeatherIcon(_iconDay2, data.forecast[1].weatherCode, false);
+        }
     } else {
-        const char* status = isWiFiConnected ? data.statusText : "Awaiting WiFi";
         lv_label_set_text(_lblWeatherTemp, "--°");
-        lv_label_set_text(_lblWeatherDesc, status);
-        lv_label_set_text(_lblWeatherHighLow, "H: --° · L: --°");
+        lv_label_set_text(_lblWeatherDesc, data.statusText);
+        lv_label_set_text(_lblWeatherHighLow, "H: --° / L: --°");
         lv_label_set_text(_lblWeatherMetrics, "Open-Meteo REST");
 
         renderWeatherIcon(_iconWeather, 0, _currentMode == DisplayMode::NIGHT);
     }
-}
-
-void UIManager::updateNetwork(const char* ssid, const char* ip, int8_t rssi, bool connected, const char* syncState) {
-    if (!_headerBar) return;
-
-    char wifiStatusBuf[32];
-    if (connected) {
-        snprintf(wifiStatusBuf, sizeof(wifiStatusBuf), "WiFi %d dBm", rssi);
-    } else {
-        snprintf(wifiStatusBuf, sizeof(wifiStatusBuf), "%s", "Offline");
-    }
-    lv_label_set_text(_lblWifiStatus, wifiStatusBuf);
-
-    char ssidBuf[32];
-    snprintf(ssidBuf, sizeof(ssidBuf), "WiFi: %.10s", ssid ? ssid : "--");
-    lv_label_set_text(_lblSystemSsid, ssidBuf);
-
-    char ipBuf[32];
-    snprintf(ipBuf, sizeof(ipBuf), "IP: %s", (connected && ip) ? ip : "Disconnected");
-    lv_label_set_text(_lblSystemIp, ipBuf);
-
-    char syncBuf[32];
-    snprintf(syncBuf, sizeof(syncBuf), "Sync: %s", syncState ? syncState : "Idle");
-    lv_label_set_text(_lblSystemSync, syncBuf);
 }
