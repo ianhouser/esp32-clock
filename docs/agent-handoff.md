@@ -41,6 +41,7 @@
 
 - **INDEX:** `docs/INDEX.md`
 - **Issue:** https://github.com/ianhouser/esp32-clock/issues/11
+- **PR:** https://github.com/ianhouser/esp32-clock/pull/12
 - **Plan:** `docs/plans/2026-10-09-issue-11-modular-web-control-panel.md`
 - **Control Panel Assets:** `data/index.html`, `data/style.css`, `data/app.js`
 - **Hardware wiring:** `docs/hardware-guide.md`
