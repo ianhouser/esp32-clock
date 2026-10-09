@@ -130,8 +130,8 @@ void UIManager::buildDashboard() {
 
     _lblTime = lv_label_create(_cardClock);
     lv_label_set_text(_lblTime, "--:--:--");
-    lv_obj_set_style_text_font(_lblTime, &lv_font_montserrat_40, 0);
-    lv_obj_align(_lblTime, LV_ALIGN_TOP_MID, 0, 6);
+    lv_obj_set_style_text_font(_lblTime, &lv_font_montserrat_48, 0);
+    lv_obj_align(_lblTime, LV_ALIGN_TOP_MID, 0, 4);
 
     _lblDate = lv_label_create(_cardClock);
     lv_label_set_text(_lblDate, "Awaiting NTP Synchronization...");
