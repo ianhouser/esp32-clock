@@ -17,7 +17,7 @@ public:
     void loop();
 
     // Reactive data update APIs
-    void updateTime(const char* timeStr, const char* dateStr);
+    void updateTime(const char* timeStr, const char* ampmStr, const char* dateStr);
     void updateWeather(const WeatherData& data, bool isFahrenheit, bool isWiFiConnected);
     void updateNetwork(const char* ssid, const char* ip, int8_t rssi, bool connected, const char* syncState);
     void setTheme(DisplayMode mode);
@@ -47,18 +47,22 @@ private:
     lv_obj_t* _lblTitle;
     lv_obj_t* _badgeMode;
     lv_obj_t* _lblBadgeMode;
+    lv_obj_t* _badgeWifi;
     lv_obj_t* _lblWifiStatus;
 
     lv_obj_t* _cardClock;
     lv_obj_t* _lblTime;
+    lv_obj_t* _badgeAmPm;
+    lv_obj_t* _lblAmPm;
     lv_obj_t* _lblDate;
 
     lv_obj_t* _bottomContainer;
     lv_obj_t* _cardWeather;
-    lv_obj_t* _lblWeatherTitle;
+    lv_obj_t* _iconWeather;
     lv_obj_t* _lblWeatherTemp;
-    lv_obj_t* _lblWeatherFeels;
-    lv_obj_t* _lblWeatherHum;
+    lv_obj_t* _lblWeatherDesc;
+    lv_obj_t* _lblWeatherHighLow;
+    lv_obj_t* _lblWeatherMetrics;
 
     lv_obj_t* _cardSystem;
     lv_obj_t* _lblSystemTitle;

@@ -6,6 +6,8 @@
 struct WeatherData {
     float temperature = 0.0f;
     float apparentTemperature = 0.0f;
+    float tempMax = 0.0f;
+    float tempMin = 0.0f;
     int humidity = 0;
     int weatherCode = 0;
     const char* conditionText = "Pending";

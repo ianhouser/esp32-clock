@@ -123,19 +123,24 @@ void loop() {
         }
     }
 
-    // Update UI clock time and date
+    // Update UI clock time and date (12-hour format)
     static int lastSecond = -1;
     if (hasLocalTime && (timeinfo.tm_sec != lastSecond)) {
         lastSecond = timeinfo.tm_sec;
+
+        int hour12 = timeinfo.tm_hour % 12;
+        if (hour12 == 0) hour12 = 12;
+        const char* ampm = (timeinfo.tm_hour >= 12) ? "PM" : "AM";
+
         char timeBuf[16];
-        snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d",
-                 timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+        snprintf(timeBuf, sizeof(timeBuf), "%d:%02d:%02d",
+                 hour12, timeinfo.tm_min, timeinfo.tm_sec);
         char dateBuf[48];
         strftime(dateBuf, sizeof(dateBuf), "%A, %B %d, %Y", &timeinfo);
-        uiManager.updateTime(timeBuf, dateBuf);
+        uiManager.updateTime(timeBuf, ampm, dateBuf);
     } else if (!hasLocalTime && (lastSecond != -99)) {
         lastSecond = -99;
-        uiManager.updateTime("--:--:--", "Awaiting NTP Synchronization...");
+        uiManager.updateTime("--:--:--", "", "Awaiting NTP Synchronization...");
     }
 
     // Update network and weather widgets every 1 second
