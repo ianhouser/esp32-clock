@@ -228,7 +228,7 @@ void updateDisplay(bool forceAll = false) {
             tft.drawString(line3Buf, weatherCardX + 10, infoCardY + 64);
         } else {
             tft.setTextColor(theme.mutedText, theme.cardBg);
-            const char* status = timeManager.isConnected() ? "Fetching..." : "Awaiting WiFi";
+            const char* status = timeManager.isConnected() ? weatherManager.getData().statusText : "Awaiting WiFi";
             tft.drawString(status, weatherCardX + 10, infoCardY + 28);
             tft.drawString("Open-Meteo REST", weatherCardX + 10, infoCardY + 46);
             tft.drawString("Telemetry Link", weatherCardX + 10, infoCardY + 64);

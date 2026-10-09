@@ -9,6 +9,7 @@ struct WeatherData {
     int humidity = 0;
     int weatherCode = 0;
     const char* conditionText = "Pending";
+    const char* statusText = "Initializing...";
     bool isValid = false;
     unsigned long lastFetchTime = 0;
 };

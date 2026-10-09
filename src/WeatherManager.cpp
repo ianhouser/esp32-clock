@@ -53,34 +53,49 @@ bool WeatherManager::fetchWeather() {
              _latitude, _longitude, _useFahrenheit ? "&temperature_unit=fahrenheit" : "");
 
     Serial.printf("[WeatherManager] Querying Open-Meteo: %s\n", url);
+    _data.statusText = "Contacting API...";
 
     if (!http.begin(client, url)) {
         Serial.println("[WeatherManager] HTTP begin failed");
+        _data.statusText = "Net Connect Err";
         return false;
     }
 
-    http.setTimeout(4500);
+    http.setUserAgent("esp32-clock/1.0");
+    http.setTimeout(7000);
     int httpCode = http.GET();
 
     if (httpCode != HTTP_CODE_OK) {
         Serial.printf("[WeatherManager] HTTP GET failed with code: %d (%s)\n",
                       httpCode, http.errorToString(httpCode).c_str());
+        _data.statusText = (httpCode > 0) ? "HTTP Error" : "Conn Timeout";
         http.end();
         return false;
     }
 
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, http.getStream());
+    String payload = http.getString();
     http.end();
 
+    if (payload.length() == 0) {
+        Serial.println("[WeatherManager] HTTP response payload was empty");
+        _data.statusText = "Empty Response";
+        return false;
+    }
+
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, payload);
+
     if (error) {
-        Serial.printf("[WeatherManager] JSON parsing error: %s\n", error.c_str());
+        Serial.printf("[WeatherManager] JSON parsing error: %s (payload length: %u)\n",
+                      error.c_str(), payload.length());
+        _data.statusText = "JSON Parse Err";
         return false;
     }
 
     JsonObject current = doc["current"];
     if (current.isNull()) {
         Serial.println("[WeatherManager] Response missing 'current' weather object");
+        _data.statusText = "Data Format Err";
         return false;
     }
 
@@ -89,6 +104,7 @@ bool WeatherManager::fetchWeather() {
     _data.humidity = current["relative_humidity_2m"] | 0;
     _data.weatherCode = current["weather_code"] | 0;
     _data.conditionText = getWeatherCodeDescription(_data.weatherCode);
+    _data.statusText = "OK";
     _data.isValid = true;
     _data.lastFetchTime = millis();
 
