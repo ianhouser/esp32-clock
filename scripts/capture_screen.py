@@ -10,8 +10,8 @@ import time
 import base64
 import os
 import glob
+import termios
 from pathlib import Path
-import serial
 from PIL import Image
 
 def find_serial_port():
@@ -20,51 +20,87 @@ def find_serial_port():
         return ports[0]
     return "/dev/cu.usbmodem1101"
 
+def open_serial_port(port, baudrate=115200):
+    fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+    # Configure terminal attributes (raw mode, 115200 8N1)
+    attrs = termios.tcgetattr(fd)
+    attrs[0] = 0 # iflag
+    attrs[1] = 0 # oflag
+    attrs[2] = termios.CS8 | termios.CREAD | termios.CLOCAL # cflag
+    attrs[3] = 0 # lflag
+    attrs[4] = termios.B115200 # ispeed
+    attrs[5] = termios.B115200 # ospeed
+    termios.tcsetattr(fd, termios.TCSANOW, attrs)
+    return fd
+
+def read_line(fd, timeout=3.0):
+    start = time.time()
+    buf = bytearray()
+    while time.time() - start < timeout:
+        try:
+            chunk = os.read(fd, 1)
+            if chunk:
+                if chunk == b'\n':
+                    return buf.decode("utf-8", errors="ignore").strip()
+                elif chunk != b'\r':
+                    buf.extend(chunk)
+            else:
+                time.sleep(0.005)
+        except BlockingIOError:
+            time.sleep(0.005)
+    return buf.decode("utf-8", errors="ignore").strip() if buf else None
+
 def capture_screen(port=None, output_path="artifacts/screen_capture.png"):
     if not port:
         port = find_serial_port()
 
     print(f"[capture] Opening serial port: {port}")
-    ser = serial.Serial(port, 115200, timeout=3)
+    fd = open_serial_port(port, 115200)
     time.sleep(0.5)
 
     # Flush input buffer
-    ser.reset_input_buffer()
+    termios.tcflush(fd, termios.TCIFLUSH)
 
     print("[capture] Sending 'cap' command...")
-    ser.write(b"cap\n")
-    ser.flush()
+    os.write(fd, b"cap\n")
 
     # Wait for header
     start_time = time.time()
     header_found = False
     while time.time() - start_time < 5.0:
-        line = ser.readline().decode("utf-8", errors="ignore").strip()
-        if "===CAPTURE_PPM_B64_START===" in line:
+        line = read_line(fd, timeout=1.0)
+        if line and "===CAPTURE_PPM_B64_START===" in line:
             header_found = True
             break
 
     if not header_found:
         print("[capture] Error: Timeout waiting for ===CAPTURE_PPM_B64_START===")
-        ser.close()
+        os.close(fd)
         return False
 
-    magic = ser.readline().decode("utf-8", errors="ignore").strip()
-    dims = ser.readline().decode("utf-8", errors="ignore").strip()
-    max_val = ser.readline().decode("utf-8", errors="ignore").strip()
+    magic = read_line(fd, timeout=2.0)
+    dims = read_line(fd, timeout=2.0)
+    max_val = read_line(fd, timeout=2.0)
+
+    if not dims:
+        print("[capture] Error: Failed to read image dimensions")
+        os.close(fd)
+        return False
 
     width, height = [int(x) for x in dims.split()]
     print(f"[capture] Receiving stream for {width}x{height} image...")
 
     b64_chunks = []
-    while time.time() - start_time < 10.0:
-        line = ser.readline().decode("utf-8", errors="ignore").strip()
+    while time.time() - start_time < 12.0:
+        line = read_line(fd, timeout=1.0)
+        if line is None:
+            continue
         if "===CAPTURE_PPM_B64_END===" in line:
             break
         if line:
             b64_chunks.append(line)
 
-    ser.close()
+    os.close(fd)
 
     full_b64 = "".join(b64_chunks)
     raw_rgb = base64.b64decode(full_b64)
