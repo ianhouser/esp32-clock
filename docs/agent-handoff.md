@@ -42,6 +42,7 @@
 
 - **INDEX:** `docs/INDEX.md`
 - **Issue:** https://github.com/ianhouser/esp32-clock/issues/7
+- **PR:** https://github.com/ianhouser/esp32-clock/pull/8
 - **Plan:** `docs/plans/2026-10-09-issue-7-weather-telemetry.md`
 - **Hardware wiring:** `docs/hardware-guide.md`
 
