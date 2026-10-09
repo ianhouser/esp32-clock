@@ -47,9 +47,9 @@ bool WeatherManager::fetchWeather() {
     WiFiClient client;
     HTTPClient http;
 
-    char url[256];
+    char url[320];
     snprintf(url, sizeof(url),
-             "http://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code%s",
+             "http://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=3%s",
              _latitude, _longitude, _useFahrenheit ? "&temperature_unit=fahrenheit" : "");
 
     Serial.printf("[WeatherManager] Querying Open-Meteo: %s\n", url);
@@ -104,14 +104,46 @@ bool WeatherManager::fetchWeather() {
     _data.humidity = current["relative_humidity_2m"] | 0;
     _data.weatherCode = current["weather_code"] | 0;
     _data.conditionText = getWeatherCodeDescription(_data.weatherCode);
+
+    // Parse Daily High & Low temperatures (Today = index 0)
+    if (!doc["daily"]["temperature_2m_max"].isNull()) {
+        _data.tempMax = doc["daily"]["temperature_2m_max"][0] | _data.temperature;
+        _data.tempMin = doc["daily"]["temperature_2m_min"][0] | _data.temperature;
+
+        // Parse Next 2 Days Forecast (index 1 = tomorrow, index 2 = day after)
+        for (int i = 0; i < 2; i++) {
+            int dayIdx = i + 1;
+            if (!doc["daily"]["temperature_2m_max"][dayIdx].isNull()) {
+                _data.forecast[i].tempMax = doc["daily"]["temperature_2m_max"][dayIdx] | 0.0f;
+                _data.forecast[i].tempMin = doc["daily"]["temperature_2m_min"][dayIdx] | 0.0f;
+                _data.forecast[i].weatherCode = doc["daily"]["weather_code"][dayIdx] | 0;
+                _data.forecast[i].isValid = true;
+            } else {
+                _data.forecast[i].isValid = false;
+            }
+        }
+    } else {
+        _data.tempMax = _data.temperature;
+        _data.tempMin = _data.temperature;
+        _data.forecast[0].isValid = false;
+        _data.forecast[1].isValid = false;
+    }
+
     _data.statusText = "OK";
     _data.isValid = true;
     _data.lastFetchTime = millis();
 
-    Serial.printf("[WeatherManager] Success: %.1f%s (%s), Hum: %d%%, Feels: %.1f%s\n",
+    Serial.printf("[WeatherManager] Success: %.1f%s (%s), Today H: %.1f%s L: %.1f%s\n",
                   _data.temperature, _useFahrenheit ? "F" : "C",
-                  _data.conditionText, _data.humidity,
-                  _data.apparentTemperature, _useFahrenheit ? "F" : "C");
+                  _data.conditionText,
+                  _data.tempMax, _useFahrenheit ? "F" : "C",
+                  _data.tempMin, _useFahrenheit ? "F" : "C");
+    if (_data.forecast[0].isValid) {
+        Serial.printf("[WeatherManager] Tomorrow: H: %.1f%s L: %.1f%s (code %d)\n",
+                      _data.forecast[0].tempMax, _useFahrenheit ? "F" : "C",
+                      _data.forecast[0].tempMin, _useFahrenheit ? "F" : "C",
+                      _data.forecast[0].weatherCode);
+    }
 
     return true;
 }

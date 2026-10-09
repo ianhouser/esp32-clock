@@ -1,50 +1,46 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-09 11:42 PDT — Antigravity (Weather telemetry bug diagnosed, fixed, flashed, and physically verified)
+**Last updated:** 2026-10-09 15:50 PDT — Antigravity (Hardware subpixel mapping locked to MADCTL 0x68, POSIX TZ applied, day palette verified on device)
 
 ## Current Focus
 
 - **Milestone:** [v0.1-mvp](https://github.com/ianhouser/esp32-clock/milestone/1)
-- **Task:** Task 4: Live Weather Telemetry Ingestion (Issue #7, PR #8 ready to merge)
-- **Blockers:** None
+- **Task:** Task 5: LVGL Modern Digital Dashboard (Issue #9)
+- **Blockers:** Awaiting human user PR review and merge
 
 ## Last Three Decisions
 
-1. Resolved chunked HTTP transfer encoding issue by buffering payload via `http.getString()` instead of streaming raw TCP socket into `deserializeJson` — 2026-10-09
-2. Supported both string literals and numeric float coordinates in `WeatherManager::begin()` for robust `secrets.h` configuration — 2026-10-09
-3. Integrated Open-Meteo REST API over plain HTTP to eliminate mbedTLS heap overhead — 2026-10-09
+1. Resolved hardware color inversion: Enforced ST7789 MADCTL register `0x68` (MX | MV | BGR subpixel ordering) on boot in `setup()`, aligning physical GMT020-02-7P display subpixels with LVGL RGB565 buffer — 2026-10-09
+2. Fixed automatic Night mode false-trigger: Added explicit `setenv("TZ", _tz, 1); tzset();` in `TimeManager` so local hour evaluates in PDT (`15:xx`) instead of UTC (`22:xx`), preventing daytime transition to night mode — 2026-10-09
+3. Overhauled dashboard layout: Removed top header bar, added 12-hour hero time card with AM/PM pill, and replaced system/net pane with a 2-day Open-Meteo weather forecast card — 2026-10-09
 
 ## What Just Happened
 
-- Diagnosed the "Fetching..." stall:
-  - Open-Meteo replies with `Transfer-Encoding: chunked`.
-  - Passing `http.getStream()` directly into `deserializeJson` exposed raw chunk length framing headers (`3a\r\n{...}`), triggering continuous JSON syntax parse errors.
-- Fixed `fetchWeather()` in `src/WeatherManager.cpp` by using `http.getString()`, which decodes HTTP chunk framing automatically.
-- Added dynamic error tracking (`statusText`) to `WeatherData` so the UI reports exact errors instead of stalling silently.
-- Re-flashed firmware directly to ESP32-C3 board (`/dev/cu.usbmodem1101`).
-- Captured live serial verification:
-  - `[WeatherManager] Success: 86.1F (Clear Sky), Hum: 29%, Feels: 86.1F`
-  - `[TimeManager] SNTP time synchronized! Current epoch: 1791571237`
-- Display now shows live local temperature, condition text, feels-like, and humidity.
+- Removed top header bar to maximize canvas space for time and weather
+- Redesigned hero clock card: 12-hour format (`3:47:22`), AM/PM pill badge, centered full date
+- Replaced system/net card with Open-Meteo 2-day forecast card (tomorrow & day after with day names, vector weather icons, High/Low temps)
+- Updated `TimeManager.cpp` with explicit `setenv("TZ")` and `tzset()` calls
+- Configured `.clangd` to strip RISC-V specific GCC flags and eliminate IDE diagnostics on macOS
+- Enforced ST7789 MADCTL register `0x68` in `main.cpp` and verified correct Day colors (Dark Slate + Cyan + Golden Yellow Sun) on physical hardware
+- Committed and pushed updates to `feat/#9-lvgl-modern-dashboard` on [PR #10](https://github.com/ianhouser/esp32-clock/pull/10)
 
-## Next Up
+## Next Up (Human User Action)
 
-1. Review and squash-merge [PR #8](https://github.com/ianhouser/esp32-clock/pull/8) into `main` and close Issue [#7](https://github.com/ianhouser/esp32-clock/issues/7)
-2. Sync local workspace with `main`
-3. Plan Task 5 of Milestone `v0.1-mvp` (or prepare `v0.1-mvp` milestone release)
+1. Verify physical display on desk
+2. Human user reviews and merges [PR #10](https://github.com/ianhouser/esp32-clock/pull/10) into `main`
 
 ## Open Risks / Watch List
 
-- Ensure weather HTTP fetch intervals remain non-blocking (7.0s timeout) to avoid UI stutters
-- Open-Meteo free tier permits up to 10,000 queries/day (15-min interval consumes ~96 queries/day, well within limits)
-- 7-pin GMT020-02-7P TFT module connects backlight directly to VCC; software color palette dimming is active
+- LVGL partial double-buffering (320×20) leaves ample headroom (>227 KB RAM free), but watch heap if adding complex full-screen images
+- 7-pin GMT020-02-7P TFT module connects backlight directly to VCC; Day/Night theme switching uses LVGL styles
 
 ## Pointers
 
 - **INDEX:** `docs/INDEX.md`
-- **Issue:** https://github.com/ianhouser/esp32-clock/issues/7
-- **PR:** https://github.com/ianhouser/esp32-clock/pull/8
-- **Plan:** `docs/plans/2026-10-09-issue-7-weather-telemetry.md`
+- **UI Concepts:** `docs/ui-design-concepts.md`
+- **Issue:** https://github.com/ianhouser/esp32-clock/issues/9
+- **PR:** https://github.com/ianhouser/esp32-clock/pull/10
+- **Plan:** `docs/plans/2026-10-09-issue-9-lvgl-modern-dashboard.md`
 - **Hardware wiring:** `docs/hardware-guide.md`
 
 

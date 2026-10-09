@@ -47,6 +47,10 @@ void TimeManager::begin(const char* ssid, const char* password,
     // Register SNTP callback before configuring time
     sntp_set_time_sync_notification_cb(TimeManager::sntpSyncCallback);
 
+    // Apply libc timezone environment immediately
+    setenv("TZ", _tz, 1);
+    tzset();
+
     connectWiFi();
 }
 
@@ -68,6 +72,8 @@ void TimeManager::connectWiFi() {
 
 void TimeManager::configureSNTP() {
     Serial.println("[TimeManager] Configuring SNTP servers and timezone...");
+    setenv("TZ", _tz, 1);
+    tzset();
     configTzTime(_tz, _ntp1, _ntp2, _ntp3);
     _lastNtpRequest = millis();
     _state = TimeSyncState::WAITING_NTP;

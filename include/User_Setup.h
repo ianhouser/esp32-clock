@@ -13,6 +13,9 @@
 #define TFT_WIDTH  240
 #define TFT_HEIGHT 320
 
+// ST7789 on GMT020-02-7P: literal 0 selects TFT_MAD_BGR (0x08) matching the panel's subpixels
+#define TFT_RGB_ORDER 0
+
 // Pin mappings linked to single source of truth in config.h
 #define TFT_CS   PIN_TFT_CS
 #define TFT_RST  PIN_TFT_RST
