@@ -1,6 +1,6 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-09 12:05 PDT — Antigravity (LVGL Concept A implemented, awaiting human user PR review/merge)
+**Last updated:** 2026-10-09 12:40 PDT — Antigravity (Color order fixed to BGR, serial commands & capture tool added, hardware captures verified)
 
 ## Current Focus
 
@@ -11,25 +11,22 @@
 ## Last Three Decisions
 
 1. Strictly confirmed workflow rule: AI agents must NEVER merge or close PRs. PR review, verification, and merging are exclusively performed by the human user — 2026-10-09
-2. Integrated LVGL v8.3.11 with partial double buffers (320×20 lines, ~25.6 KB RAM) on top of TFT_eSPI, preserving ~227 KB free SRAM on the ESP32-C3 — 2026-10-09
-3. Implemented UI Concept A ("Sleek Modern Digital Dashboard") and documented UI Concept B ("Multi-Screen Carousel") in `docs/ui-design-concepts.md` for future roadmap evolution — 2026-10-09
+2. Configured ST7789 `TFT_RGB_ORDER TFT_BGR` in `include/User_Setup.h` to match GMT020-02-7P physical subpixels, eliminating Red/Blue swap and restoring vibrant Cyan and Deep Slate Navy palettes — 2026-10-09
+3. Built zero-overhead framebuffer streaming via LVGL `dispFlushCallback` + native POSIX serial capture tool (`scripts/capture_screen.py`) to inspect live screen pixels directly over USB CDC — 2026-10-09
 
 ## What Just Happened
 
-- Created Issue [#9](https://github.com/ianhouser/esp32-clock/issues/9) (`feat: integrate LVGL graphics library and build modern digital dashboard UI`)
-- Checked out feature branch `feat/#9-lvgl-modern-dashboard`
-- Created `docs/ui-design-concepts.md` detailing Concept A (active) and Concept B (tracked)
-- Authored implementation plan `docs/plans/2026-10-09-issue-9-lvgl-modern-dashboard.md`
-- Added `lvgl/lvgl@^8.3.11` to `platformio.ini` and created `include/lv_conf.h` optimized for ESP32-C3
-- Implemented modular `UIManager` (`include/UIManager.h`, `src/UIManager.cpp`) encapsulating LVGL drivers, partial line buffers, and dashboard widgets
-- Refactored `src/main.cpp` to drive the reactive LVGL event and timer loop
-- Verified clean build with `pio run` (99.8 KB RAM / 1029 KB Flash, 0 errors)
-- Updated `docs/INDEX.md`
+- Resolved color inversion: configured `TFT_RGB_ORDER TFT_BGR` in `include/User_Setup.h` and `LV_COLOR_16_SWAP 1` in `include/lv_conf.h`
+- Upgraded hero clock font to `lv_font_montserrat_48` for high-definition digital clock display
+- Added interactive serial commands in `src/main.cpp`: `day`, `night`, `auto`, and `cap`
+- Built `scripts/capture_screen.py` using native macOS POSIX serial (`termios`) and verified live screen captures for both Day and Night modes
+- Confirmed pixel-perfect rendering of Concept A dashboard
+- Updated [PR #10](https://github.com/ianhouser/esp32-clock/pull/10) with all fixes and tools
 
 ## Next Up (Human User Action)
 
-1. Review and test PR on physical hardware (`pio run --target upload`)
-2. Human user reviews and merges PR into `main`
+1. Verify the display looks correct in person on the physical device
+2. Human user reviews and merges [PR #10](https://github.com/ianhouser/esp32-clock/pull/10) into `main`
 
 ## Open Risks / Watch List
 
