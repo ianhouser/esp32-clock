@@ -1,41 +1,39 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-04 15:26 PDT — Antigravity (Issue #5 time-based display dimming implemented & verified)
+**Last updated:** 2026-10-09 08:48 PDT — Antigravity (PR #6 merged, physical hardware verified running live clock)
 
 ## Current Focus
 
 - **Milestone:** [v0.1-mvp](https://github.com/ianhouser/esp32-clock/milestone/1)
-- **Task:** Task 3: Time-based Display Dimming & Night Mode (Issue #5)
+- **Task:** Task 4: Live Weather Telemetry Ingestion (Open-Meteo REST API)
 - **Blockers:** None
 
 ## Last Three Decisions
 
-1. Deferred physical light sensor (ADC GPIO 1) due to pending hardware arrival and implemented time-based scheduled night mode dimming (Issue #5) — 2026-10-04
-2. Implemented dual-mode dimming architecture: zero-hardware software color palette shifting (deep warm amber/true black for 7-pin display) and portable ESP32 LEDC PWM backlight control — 2026-10-04
-3. Decoupled telemetry timers in `main.cpp` and dynamically tracked RSSI changes to prevent timer starvation — 2026-10-04
+1. Configured `.clangd` compilation database to resolve IDE Arduino/ESP32 framework intellisense diagnostics — 2026-10-09
+2. Verified live clock firmware on physical ESP32-C3 hardware (NTP synchronized, WiFi connected, day/night face active) and merged PR #6 — 2026-10-09
+3. Implemented dual-mode dimming architecture: zero-hardware software color palette shifting and portable ESP32 LEDC PWM backlight control — 2026-10-04
 
 ## What Just Happened
 
-- Created Issue [#5](https://github.com/ianhouser/esp32-clock/issues/5) (`feat: time-based display night mode and dimming schedule`)
-- Checked out feature branch `feat/#5-time-based-dimming`
-- Authored implementation plan `docs/plans/2026-10-04-issue-5-time-based-dimming.md`
-- Implemented modular `DisplayTheme` (`include/DisplayTheme.h`) and `DisplayManager` (`include/DisplayManager.h`, `src/DisplayManager.cpp`)
-- Configured 22:00–07:00 night schedule and LEDC PWM settings in `include/config.h`
-- Refactored `src/main.cpp` to consume theme tokens dynamically and render a live `DAY` / `NIGHT` status badge
-- Verified clean build with `pio run` (39.9 KB RAM / 764 KB Flash, 0 errors)
-- Updated `docs/INDEX.md`
+- Resolved IDE language server / IntelliSense errors by generating `compile_commands.json` and `.clangd` configuration
+- User configured `include/secrets.h` and flashed ESP32-C3 via `pio run --target upload`
+- Verified live physical operation: network connected, NTP synchronized, and digital clock face active
+- Squashed and merged [PR #6](https://github.com/ianhouser/esp32-clock/pull/6) into `main` and closed Issue [#5](https://github.com/ianhouser/esp32-clock/issues/5)
+- Synced local workspace to latest `main`
 
 ## Next Up
 
-1. Commit and push feature branch `feat/#5-time-based-dimming` to origin and open Pull Request for Issue #5
-2. Conduct code review and merge PR to `main`
-3. Flash and verify on physical ESP32-C3 hardware
-4. Proceed to Task 4 of Milestone `v0.1-mvp`: Live Weather Telemetry Ingestion (Open-Meteo REST API)
+1. Create GitHub issue and implementation plan for Task 4: Live Weather Telemetry Ingestion (Open-Meteo REST API)
+2. Checkout feature branch `feat/#7-weather-telemetry`
+3. Integrate non-blocking HTTP REST client with ArduinoJson to fetch outdoor temperature, humidity, and condition code
+4. Render live weather telemetry card on ST7789 display alongside existing time & network cards
 
 ## Open Risks / Watch List
 
-- 7-pin GMT020-02-7P TFT module connects backlight directly to VCC, making software color palette dimming (true black + warm amber) the primary dimming mechanism unless hardware is modified
-- Ensure developers copy `include/secrets.h.example` to `include/secrets.h` when flashing to physical hardware
+- Ensure weather HTTP fetch intervals are non-blocking and throttled (e.g. every 15–30 minutes) to avoid WiFi task starvation or API rate limits
+- Maintain low heap footprint when parsing JSON payloads with ArduinoJson
+- 7-pin GMT020-02-7P TFT module connects backlight directly to VCC; software color palette dimming is active
 
 ## Pointers
 
