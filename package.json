@@ -1,0 +1,22 @@
+{
+  "name": "esp32-clock",
+  "version": "0.1.0",
+  "description": "Smart IoT digital clock with ST7789 IPS display and LVGL dashboard on ESP32-C3",
+  "scripts": {
+    "capture": "python3 scripts/capture_screen.py",
+    "capture:day": "python3 scripts/capture_screen.py --mode day --out artifacts/screen_capture_day.png",
+    "capture:night": "python3 scripts/capture_screen.py --mode night --out artifacts/screen_capture_night.png",
+    "build": "pio run",
+    "upload": "pio run --target upload",
+    "monitor": "pio device monitor"
+  },
+  "keywords": [
+    "esp32",
+    "esp32-c3",
+    "lvgl",
+    "st7789",
+    "iot-clock"
+  ],
+  "author": "",
+  "license": "MIT"
+}

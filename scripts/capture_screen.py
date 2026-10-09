@@ -122,6 +122,26 @@ def capture_screen(port=None, output_path="artifacts/screen_capture.png"):
     print(f"[capture] Successfully saved screenshot to: {out_file.resolve()}")
     return str(out_file.resolve())
 
+def set_device_mode(port, mode):
+    fd = open_serial_port(port, 115200)
+    time.sleep(0.2)
+    termios.tcflush(fd, termios.TCIFLUSH)
+    print(f"[capture] Setting device mode: '{mode}'...")
+    os.write(fd, f"{mode}\n".encode("utf-8"))
+    time.sleep(0.3)
+    os.close(fd)
+
 if __name__ == "__main__":
-    out = sys.argv[1] if len(sys.argv) > 1 else "artifacts/screen_capture.png"
-    capture_screen(output_path=out)
+    import argparse
+    parser = argparse.ArgumentParser(description="Capture ESP32 display framebuffer over USB CDC")
+    parser.add_argument("--port", help="Serial port (auto-detect if omitted)")
+    parser.add_argument("--mode", choices=["day", "night", "auto"], help="Set mode before capturing")
+    parser.add_argument("--out", default="artifacts/screen_capture.png", help="Output PNG file path")
+    args = parser.parse_args()
+
+    port = args.port or find_serial_port()
+
+    if args.mode:
+        set_device_mode(port, args.mode)
+
+    capture_screen(port=port, output_path=args.out)
