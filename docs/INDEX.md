@@ -15,5 +15,6 @@
 | `docs/ui-design-concepts.md` | architecture | 2026-10-09 | UI design concepts — Concept A (active dashboard) and Concept B (carousel roadmap). |
 | `docs/plans/2026-10-09-issue-7-weather-telemetry.md` | developer | 2026-10-09 | Implementation plan — live weather telemetry ingestion via Open-Meteo REST API. |
 | `docs/plans/2026-10-09-issue-9-lvgl-modern-dashboard.md` | developer | 2026-10-09 | Implementation plan — LVGL integration and modern digital dashboard UI (Concept A). |
+| `docs/plans/2026-10-09-issue-11-modular-web-control-panel.md` | developer | 2026-10-09 | Implementation plan — modular web control panel, live 320x240 screen simulation, and customization dashboard. |
 | `AGENTS.md` | reference | 2026-10-04 | Agent hub — binding decisions, stop rules, and critical gotchas. |
 | `CONTRIBUTING.md` | developer | 2026-10-04 | Contributing — mandatory git workflow and coding standards. |

@@ -1,46 +1,46 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-09 15:50 PDT — Antigravity (Hardware subpixel mapping locked to MADCTL 0x68, POSIX TZ applied, day palette verified on device)
+**Last updated:** 2026-10-09 16:45 PDT — Antigravity (Implemented modular web control panel, CardRegistry, dynamic theming, and 320x240 screen simulation for Issue #11)
 
 ## Current Focus
 
-- **Milestone:** [v0.1-mvp](https://github.com/ianhouser/esp32-clock/milestone/1)
-- **Task:** Task 5: LVGL Modern Digital Dashboard (Issue #9)
-- **Blockers:** Awaiting human user PR review and merge
+- **Milestone:** [v0.2-web-control](https://github.com/ianhouser/esp32-clock/milestone/2)
+- **Task:** Issue #11: Modular Web Control Panel & Customization Dashboard
+- **Branch:** `feat/11-web-control-panel`
+- **Blockers:** None
 
 ## Last Three Decisions
 
-1. Resolved hardware color inversion: Enforced ST7789 MADCTL register `0x68` (MX | MV | BGR subpixel ordering) on boot in `setup()`, aligning physical GMT020-02-7P display subpixels with LVGL RGB565 buffer — 2026-10-09
-2. Fixed automatic Night mode false-trigger: Added explicit `setenv("TZ", _tz, 1); tzset();` in `TimeManager` so local hour evaluates in PDT (`15:xx`) instead of UTC (`22:xx`), preventing daytime transition to night mode — 2026-10-09
-3. Overhauled dashboard layout: Removed top header bar, added 12-hour hero time card with AM/PM pill, and replaced system/net pane with a 2-day Open-Meteo weather forecast card — 2026-10-09
+1. Architected modular `Card` interface and `CardRegistry` to decouple cards from core firmware: allows existing cards (`clock`, `weather`, `forecast`, `system`) and upcoming cards (`calendar`, `notifications`) to be toggled, reordered, and configured without modifying core engines — 2026-10-09
+2. Migrated partition table to custom 4MB layout (`partitions.csv`): provides 2MB app partition (reducing flash consumption from 95.4% down to 59.6%) and ~1.87MB LittleFS partition for web assets and dynamic `/config.json` — 2026-10-09
+3. Built Single-Page Control Panel in `data/` (`index.html`, `style.css`, `app.js`): features a responsive dark glassmorphic dashboard, real-time 320×240 HTML5 canvas preview simulating the ST7789 display, palette preset studio, and dynamic card reordering — 2026-10-09
 
 ## What Just Happened
 
-- Removed top header bar to maximize canvas space for time and weather
-- Redesigned hero clock card: 12-hour format (`3:47:22`), AM/PM pill badge, centered full date
-- Replaced system/net card with Open-Meteo 2-day forecast card (tomorrow & day after with day names, vector weather icons, High/Low temps)
-- Updated `TimeManager.cpp` with explicit `setenv("TZ")` and `tzset()` calls
-- Configured `.clangd` to strip RISC-V specific GCC flags and eliminate IDE diagnostics on macOS
-- Enforced ST7789 MADCTL register `0x68` in `main.cpp` and verified correct Day colors (Dark Slate + Cyan + Golden Yellow Sun) on physical hardware
-- Committed and pushed updates to `feat/#9-lvgl-modern-dashboard` on [PR #10](https://github.com/ianhouser/esp32-clock/pull/10)
+- Created GitHub Issue [#11](https://github.com/ianhouser/esp32-clock/issues/11) under milestone `v0.2-web-control` and branched to `feat/11-web-control-panel`
+- Implemented `Card` base class (`include/cards/Card.h`) and `CardRegistry` (`include/cards/CardRegistry.h`, `src/cards/CardRegistry.cpp`)
+- Created concrete card implementations: `ClockCard`, `WeatherCard`, `ForecastCard`, `SystemCard`, plus extensible templates for `CalendarCard` and `NotificationCard`
+- Created `ConfigManager` (`include/ConfigManager.h`, `src/ConfigManager.cpp`) with LittleFS mounting and dynamic hex RGB565 theme conversion
+- Integrated `ESPAsyncWebServer` & `AsyncTCP` in `WebServerManager` with REST endpoints (`GET /api/config`, `POST /api/config`, `GET /api/status`, `POST /api/restart`) and mDNS discovery at `http://esp32-clock.local`
+- Built modern glassmorphic web control panel SPA in `data/` with dynamic card manager, theme studio, and live 320x240 canvas screen simulator
+- Configured 4MB custom partition table (`partitions.csv`), reducing flash usage to 59.6%
+- Verified with `pio run` (firmware) and `pio run -t buildfs` (LittleFS filesystem packaging) with 0 errors
 
-## Next Up (Human User Action)
+## Next Up
 
-1. Verify physical display on desk
-2. Human user reviews and merges [PR #10](https://github.com/ianhouser/esp32-clock/pull/10) into `main`
+1. Test flashing firmware and LittleFS filesystem image to physical hardware (`pio run -t upload && pio run -t uploadfs`)
+2. Access `http://esp32-clock.local` in local browser to test live control and configuration
+3. Push branch and open Pull Request for Issue #11
 
 ## Open Risks / Watch List
 
-- LVGL partial double-buffering (320×20) leaves ample headroom (>227 KB RAM free), but watch heap if adding complex full-screen images
-- 7-pin GMT020-02-7P TFT module connects backlight directly to VCC; Day/Night theme switching uses LVGL styles
+- Ensure `LittleFS` is flashed via `pio run -t uploadfs` whenever web assets in `data/` are modified
+- Monitor heap during simultaneous web browsing and LVGL rendering (currently ~225 KB free SRAM)
 
 ## Pointers
 
 - **INDEX:** `docs/INDEX.md`
-- **UI Concepts:** `docs/ui-design-concepts.md`
-- **Issue:** https://github.com/ianhouser/esp32-clock/issues/9
-- **PR:** https://github.com/ianhouser/esp32-clock/pull/10
-- **Plan:** `docs/plans/2026-10-09-issue-9-lvgl-modern-dashboard.md`
+- **Issue:** https://github.com/ianhouser/esp32-clock/issues/11
+- **Plan:** `docs/plans/2026-10-09-issue-11-modular-web-control-panel.md`
+- **Control Panel Assets:** `data/index.html`, `data/style.css`, `data/app.js`
 - **Hardware wiring:** `docs/hardware-guide.md`
-
-

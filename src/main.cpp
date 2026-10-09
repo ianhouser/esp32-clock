@@ -6,6 +6,15 @@
 #include "DisplayManager.h"
 #include "WeatherManager.h"
 #include "UIManager.h"
+#include "ConfigManager.h"
+#include "WebServerManager.h"
+#include "cards/CardRegistry.h"
+#include "cards/ClockCard.h"
+#include "cards/WeatherCard.h"
+#include "cards/ForecastCard.h"
+#include "cards/CalendarCard.h"
+#include "cards/NotificationCard.h"
+#include "cards/SystemCard.h"
 
 // Secure credentials fallback if secrets.h is not yet created
 #if __has_include("secrets.h")
@@ -35,6 +44,13 @@ TimeManager timeManager;
 DisplayManager displayManager;
 WeatherManager weatherManager;
 UIManager uiManager;
+
+static ClockCard s_clockCard;
+static WeatherCard s_weatherCard;
+static ForecastCard s_forecastCard;
+static CalendarCard s_calendarCard;
+static NotificationCard s_notificationCard;
+static SystemCard s_systemCard;
 
 void setup() {
     Serial.begin(115200);
@@ -68,6 +84,25 @@ void setup() {
     // Initialize Display Manager (schedule & backlight)
     displayManager.begin();
 
+    // Register modular cards into registry
+    CardRegistry::getInstance().registerCard(&s_clockCard);
+    CardRegistry::getInstance().registerCard(&s_weatherCard);
+    CardRegistry::getInstance().registerCard(&s_forecastCard);
+    CardRegistry::getInstance().registerCard(&s_calendarCard);
+    CardRegistry::getInstance().registerCard(&s_notificationCard);
+    CardRegistry::getInstance().registerCard(&s_systemCard);
+
+    // Mount LittleFS & load configuration
+    ConfigManager::getInstance().begin();
+
+    // Hook dynamic config change listener
+    ConfigManager::getInstance().onConfigChanged([]() {
+        Serial.println("[main] Configuration updated dynamically!");
+        uiManager.reloadConfig();
+        const auto& t = ConfigManager::getInstance().getThemeConfig();
+        displayManager.setSchedule(t.nightStartHour, t.nightStartMin, t.nightEndHour, t.nightEndMin);
+    });
+
     // Initialize LVGL UI Manager
     uiManager.begin(&tft);
 
@@ -81,6 +116,13 @@ void setup() {
 void loop() {
     // Process WiFi & SNTP state machine
     timeManager.update();
+
+    // Start Web Server once WiFi connects
+    static bool s_webServerStarted = false;
+    if (timeManager.isConnected() && !s_webServerStarted) {
+        WebServerManager::getInstance().begin();
+        s_webServerStarted = true;
+    }
 
     // Poll Open-Meteo weather when online (non-blocking)
     bool newWeatherData = weatherManager.update(timeManager.isConnected());

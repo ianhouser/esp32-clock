@@ -21,6 +21,8 @@ public:
     void updateWeather(const WeatherData& data, bool isFahrenheit, int todayWeekday);
     void updateNetwork(const char* ssid, const char* ip, int8_t rssi, bool connected, const char* syncState) {}
     void setTheme(DisplayMode mode);
+    void reloadConfig();
+    void refreshCards();
 
     // Framebuffer Capture over Serial
     void requestCapture();

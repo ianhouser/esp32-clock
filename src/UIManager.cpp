@@ -1,4 +1,9 @@
 #include "UIManager.h"
+#include "ConfigManager.h"
+#include "cards/CardRegistry.h"
+#include "cards/ClockCard.h"
+#include "cards/WeatherCard.h"
+#include "cards/ForecastCard.h"
 
 static TFT_eSPI* s_tft = nullptr;
 
@@ -342,6 +347,25 @@ void UIManager::buildDashboard() {
     lv_label_set_text(_lblDay2HighLow, "--° / --°");
     lv_obj_set_style_text_font(_lblDay2HighLow, &lv_font_montserrat_12, 0);
     lv_obj_set_pos(_lblDay2HighLow, 68, 74);
+
+    // Link card widgets to modular CardRegistry
+    ClockCard* clockCard = (ClockCard*)CardRegistry::getInstance().getCard("clock");
+    if (clockCard) clockCard->setContainer(_cardClock);
+
+    WeatherCard* weatherCard = (WeatherCard*)CardRegistry::getInstance().getCard("weather");
+    if (weatherCard) weatherCard->setContainer(_cardWeather);
+
+    ForecastCard* forecastCard = (ForecastCard*)CardRegistry::getInstance().getCard("forecast");
+    if (forecastCard) forecastCard->setContainer(_cardForecast);
+
+    CardRegistry::getInstance().updateVisibilityAll();
+}
+
+static lv_color_t hexToLvColor(const char* hex) {
+    if (!hex || hex[0] == '\0') return lv_color_white();
+    if (hex[0] == '#') hex++;
+    long rgb = strtol(hex, nullptr, 16);
+    return lv_color_hex((uint32_t)rgb);
 }
 
 void UIManager::applyThemeStyles(DisplayMode mode) {
@@ -359,14 +383,14 @@ void UIManager::applyThemeStyles(DisplayMode mode) {
         colorMuted     = lv_color_make(140, 86, 56);
         colorBadgeBg   = lv_color_make(42, 20, 8);
     } else {
-        // Day Theme (Material 3 Dark Modern Obsidian/Cyan)
-        colorBg        = lv_color_make(15, 19, 24);
-        colorCard      = lv_color_make(24, 28, 36);
-        colorBorder    = lv_color_make(40, 48, 61);
-        colorAccent    = lv_color_make(56, 189, 248);
-        colorText      = lv_color_make(241, 245, 249);
-        colorMuted     = lv_color_make(148, 163, 184);
-        colorBadgeBg   = lv_color_make(30, 41, 59);
+        const auto& themeCfg = ConfigManager::getInstance().getThemeConfig();
+        colorBg        = hexToLvColor(themeCfg.bgColor.c_str());
+        colorCard      = hexToLvColor(themeCfg.cardBgColor.c_str());
+        colorBorder    = hexToLvColor(themeCfg.cardBorderColor.c_str());
+        colorAccent    = hexToLvColor(themeCfg.accentColor.c_str());
+        colorText      = hexToLvColor(themeCfg.dateColor.c_str());
+        colorMuted     = hexToLvColor(themeCfg.mutedTextColor.c_str());
+        colorBadgeBg   = hexToLvColor(themeCfg.cardBgColor.c_str());
     }
 
     // Apply Canvas Background
@@ -407,6 +431,16 @@ void UIManager::applyThemeStyles(DisplayMode mode) {
 void UIManager::setTheme(DisplayMode mode) {
     applyThemeStyles(mode);
 }
+
+void UIManager::reloadConfig() {
+    refreshCards();
+    applyThemeStyles(_currentMode);
+}
+
+void UIManager::refreshCards() {
+    CardRegistry::getInstance().updateVisibilityAll();
+}
+
 
 void UIManager::updateTime(const char* timeStr, const char* ampmStr, const char* dateStr) {
     if (_lblTime && timeStr) {
