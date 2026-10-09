@@ -23,6 +23,15 @@ public:
                bool useFahrenheit = DEFAULT_WEATHER_USE_FAHR,
                unsigned long updateIntervalMs = WEATHER_UPDATE_INTERVAL_MS);
 
+    // Overload supporting string literals (e.g. from secrets.h "#define WEATHER_LAT \"34.25\"")
+    void begin(const char* latStr, const char* lonStr,
+               bool useFahrenheit = DEFAULT_WEATHER_USE_FAHR,
+               unsigned long updateIntervalMs = WEATHER_UPDATE_INTERVAL_MS) {
+        begin(latStr ? atof(latStr) : DEFAULT_WEATHER_LAT,
+              lonStr ? atof(lonStr) : DEFAULT_WEATHER_LON,
+              useFahrenheit, updateIntervalMs);
+    }
+
     // Call regularly in Arduino loop(). Returns true if new weather data was fetched.
     bool update(bool isWiFiConnected);
 
