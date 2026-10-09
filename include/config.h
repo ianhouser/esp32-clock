@@ -17,7 +17,7 @@
 #define SCREEN_WIDTH   320
 #define SCREEN_HEIGHT  240
 #define SCREEN_ROTATION  1 // Landscape (0=portrait, 1=landscape 90 deg, 2=inv portrait, 3=inv landscape)
-#define SCREEN_INVERT_DISPLAY true // Required for IPS display panels
+#define SCREEN_INVERT_DISPLAY true // Required for ST7789 IPS panels (0x0000=Black, 0xFFFF=White)
 
 // Time-Based Night Mode Schedule (24-hour format)
 #define NIGHT_MODE_START_HOUR 22  // 10:00 PM

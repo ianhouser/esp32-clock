@@ -60,6 +60,9 @@ void setup() {
     tft.init();
     tft.setRotation(SCREEN_ROTATION);
     tft.invertDisplay(SCREEN_INVERT_DISPLAY);
+    // Enforce GMT020-02-7P subpixel mapping: 0x68 = MX (0x40) | MV (0x20) | BGR (0x08)
+    tft.writecommand(0x36);
+    tft.writedata(0x68);
     tft.fillScreen(TFT_BLACK);
 
     // Initialize Display Manager (schedule & backlight)
@@ -107,11 +110,19 @@ void loop() {
             s_forcedMode = 0;
             uiManager.setTheme(displayManager.getMode());
             Serial.println("[CMD] Theme override cleared: AUTO schedule resumed");
+        } else if (cmd == "rgb") {
+            tft.writecommand(0x36);
+            tft.writedata(0x60);
+            Serial.println("[CMD] Display MADCTL bit 3 cleared -> RGB mode forced");
+        } else if (cmd == "bgr") {
+            tft.writecommand(0x36);
+            tft.writedata(0x68);
+            Serial.println("[CMD] Display MADCTL bit 3 set -> BGR mode forced");
         } else if (cmd == "cap" || cmd == "screenshot") {
             Serial.println("[CMD] Initiating screen framebuffer capture...");
             uiManager.requestCapture();
         } else if (cmd.length() > 0) {
-            Serial.printf("[CMD] Unknown command '%s'. Supported: day, night, auto, cap\n", cmd.c_str());
+            Serial.printf("[CMD] Unknown command '%s'. Supported: day, night, auto, rgb, bgr, cap\n", cmd.c_str());
         }
     }
 

@@ -1,6 +1,6 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-09 14:15 PDT — Antigravity (UI overhauled: Header removed, 12h time, 2-day forecast added, auto mode restoration enabled)
+**Last updated:** 2026-10-09 15:50 PDT — Antigravity (Hardware subpixel mapping locked to MADCTL 0x68, POSIX TZ applied, day palette verified on device)
 
 ## Current Focus
 
@@ -10,17 +10,18 @@
 
 ## Last Three Decisions
 
-1. Overhauled dashboard layout: Removed top header bar, added 12-hour hero time card with AM/PM pill, and replaced system/net pane with a 2-day Open-Meteo weather forecast card — 2026-10-09
-2. Fixed unrendered font glyph boxes: Replaced Unicode middle dot (`·`) with standard ASCII delimiters (`|`, `/`) compatible with LVGL Montserrat — 2026-10-09
-3. Enhanced screen capture script (`scripts/capture_screen.py`) to automatically restore the device to its normal `auto` day/night schedule after temporary mode captures — 2026-10-09
+1. Resolved hardware color inversion: Enforced ST7789 MADCTL register `0x68` (MX | MV | BGR subpixel ordering) on boot in `setup()`, aligning physical GMT020-02-7P display subpixels with LVGL RGB565 buffer — 2026-10-09
+2. Fixed automatic Night mode false-trigger: Added explicit `setenv("TZ", _tz, 1); tzset();` in `TimeManager` so local hour evaluates in PDT (`15:xx`) instead of UTC (`22:xx`), preventing daytime transition to night mode — 2026-10-09
+3. Overhauled dashboard layout: Removed top header bar, added 12-hour hero time card with AM/PM pill, and replaced system/net pane with a 2-day Open-Meteo weather forecast card — 2026-10-09
 
 ## What Just Happened
 
-- Removed top header bar (`Day`, `esp32-clock`, WiFi dBm) to give clock and weather full vertical canvas space
-- Redesigned hero clock card: 12-hour format (`1:56:29`), AM/PM pill badge, centered full date
+- Removed top header bar to maximize canvas space for time and weather
+- Redesigned hero clock card: 12-hour format (`3:47:22`), AM/PM pill badge, centered full date
 - Replaced system/net card with Open-Meteo 2-day forecast card (tomorrow & day after with day names, vector weather icons, High/Low temps)
-- Updated `scripts/capture_screen.py` with automatic `--mode auto` restoration
-- Verified live screen capture on device running Day mode (Material dark slate + Cyan)
+- Updated `TimeManager.cpp` with explicit `setenv("TZ")` and `tzset()` calls
+- Configured `.clangd` to strip RISC-V specific GCC flags and eliminate IDE diagnostics on macOS
+- Enforced ST7789 MADCTL register `0x68` in `main.cpp` and verified correct Day colors (Dark Slate + Cyan + Golden Yellow Sun) on physical hardware
 - Committed and pushed updates to `feat/#9-lvgl-modern-dashboard` on [PR #10](https://github.com/ianhouser/esp32-clock/pull/10)
 
 ## Next Up (Human User Action)

@@ -35,7 +35,10 @@ void UIManager::dispFlushCallback(lv_disp_drv_t* disp, const lv_area_t* area, lv
         uint32_t w = (area->x2 - area->x1 + 1);
         uint32_t h = (area->y2 - area->y1 + 1);
 
-        s_tft->pushImage(area->x1, area->y1, w, h, (uint16_t*)&color_p->full);
+        s_tft->startWrite();
+        s_tft->setAddrWindow(area->x1, area->y1, w, h);
+        s_tft->pushColors((uint16_t*)&color_p->full, w * h, false);
+        s_tft->endWrite();
 
         if (s_captureActive) {
             static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

@@ -1,2 +1,17 @@
 CompileFlags:
   CompilationDatabase: .
+  Add:
+    - --target=riscv32-unknown-elf
+    - -Wno-unknown-warning-option
+    - -Wno-unused-command-line-argument
+  Remove:
+    - -fstrict-volatile-bitfields
+    - -fno-tree-switch-conversion
+    - -march=rv32imc
+    - -mabi=ilp32
+
+Diagnostics:
+  Suppress:
+    - drv_unknown_argument
+    - drv_unsupported_opt_for_target
+    - attribute_section_invalid_for_target

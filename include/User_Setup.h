@@ -13,8 +13,8 @@
 #define TFT_WIDTH  240
 #define TFT_HEIGHT 320
 
-// ST7789 on GMT020-02-7P requires TFT_BGR so MADCTL bit 3 is set (0x08), correctly mapping RGB565 to the physical subpixels
-#define TFT_RGB_ORDER TFT_BGR
+// ST7789 on GMT020-02-7P: literal 0 selects TFT_MAD_BGR (0x08) matching the panel's subpixels
+#define TFT_RGB_ORDER 0
 
 // Pin mappings linked to single source of truth in config.h
 #define TFT_CS   PIN_TFT_CS
