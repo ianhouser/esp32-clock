@@ -26,14 +26,67 @@ UIManager::UIManager()
       _lblSystemIp(nullptr),
       _lblSystemSync(nullptr) {}
 
+static bool s_captureActive = false;
+static uint32_t s_capturePixelCount = 0;
+static uint8_t s_b64LineLen = 0;
+
 void UIManager::dispFlushCallback(lv_disp_drv_t* disp, const lv_area_t* area, lv_color_t* color_p) {
     if (s_tft) {
         uint32_t w = (area->x2 - area->x1 + 1);
         uint32_t h = (area->y2 - area->y1 + 1);
 
         s_tft->pushImage(area->x1, area->y1, w, h, (uint16_t*)&color_p->full);
+
+        if (s_captureActive) {
+            static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+            uint32_t totalPixels = w * h;
+            for (uint32_t i = 0; i < totalPixels; i++) {
+                uint8_t b0 = ((uint8_t*)&color_p[i])[0];
+                uint8_t b1 = ((uint8_t*)&color_p[i])[1];
+                uint16_t raw = (b0 << 8) | b1;
+                uint8_t r = (((raw >> 11) & 0x1F) * 255) / 31;
+                uint8_t g = (((raw >> 5) & 0x3F) * 255) / 63;
+                uint8_t b = ((raw & 0x1F) * 255) / 31;
+
+                char out[4];
+                out[0] = b64[(r >> 2) & 0x3F];
+                out[1] = b64[((r & 0x03) << 4) | ((g >> 4) & 0x0F)];
+                out[2] = b64[((g & 0x0F) << 2) | ((b >> 6) & 0x03)];
+                out[3] = b64[b & 0x3F];
+
+                Serial.write((const uint8_t*)out, 4);
+                s_b64LineLen += 4;
+                if (s_b64LineLen >= 64) {
+                    Serial.println();
+                    s_b64LineLen = 0;
+                }
+
+                s_capturePixelCount++;
+            }
+
+            if (s_capturePixelCount >= 320 * 240) {
+                if (s_b64LineLen > 0) Serial.println();
+                Serial.println("===CAPTURE_PPM_B64_END===");
+                s_captureActive = false;
+            }
+        }
     }
     lv_disp_flush_ready(disp);
+}
+
+void UIManager::requestCapture() {
+    s_captureActive = true;
+    s_capturePixelCount = 0;
+    s_b64LineLen = 0;
+    Serial.println("\n===CAPTURE_PPM_B64_START===");
+    Serial.println("P6");
+    Serial.printf("%d %d\n", 320, 240);
+    Serial.println("255");
+    lv_obj_invalidate(lv_scr_act());
+}
+
+bool UIManager::isCaptureActive() {
+    return s_captureActive;
 }
 
 void UIManager::begin(TFT_eSPI* tft) {
@@ -267,9 +320,7 @@ void UIManager::applyThemeStyles(DisplayMode mode) {
 }
 
 void UIManager::setTheme(DisplayMode mode) {
-    if (mode != _currentMode) {
-        applyThemeStyles(mode);
-    }
+    applyThemeStyles(mode);
 }
 
 void UIManager::updateTime(const char* timeStr, const char* dateStr) {

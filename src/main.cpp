@@ -87,10 +87,36 @@ void loop() {
                                 timeManager.isConnected());
     }
 
-    // Check time-based day/night schedule transition
+    // Process Serial Commands (theme toggle, screen capture)
+    static int s_forcedMode = 0; // 0 = Auto, 1 = Force Day, 2 = Force Night
+    if (Serial.available()) {
+        String cmd = Serial.readStringUntil('\n');
+        cmd.trim();
+        cmd.toLowerCase();
+        if (cmd == "day") {
+            s_forcedMode = 1;
+            uiManager.setTheme(DisplayMode::DAY);
+            Serial.println("[CMD] Theme override: DAY mode forced");
+        } else if (cmd == "night") {
+            s_forcedMode = 2;
+            uiManager.setTheme(DisplayMode::NIGHT);
+            Serial.println("[CMD] Theme override: NIGHT mode forced");
+        } else if (cmd == "auto") {
+            s_forcedMode = 0;
+            uiManager.setTheme(displayManager.getMode());
+            Serial.println("[CMD] Theme override cleared: AUTO schedule resumed");
+        } else if (cmd == "cap" || cmd == "screenshot") {
+            Serial.println("[CMD] Initiating screen framebuffer capture...");
+            uiManager.requestCapture();
+        } else if (cmd.length() > 0) {
+            Serial.printf("[CMD] Unknown command '%s'. Supported: day, night, auto, cap\n", cmd.c_str());
+        }
+    }
+
+    // Check time-based day/night schedule transition (only if not forced)
     struct tm timeinfo;
     bool hasLocalTime = timeManager.getLocalTime(timeinfo);
-    if (hasLocalTime) {
+    if (hasLocalTime && (s_forcedMode == 0)) {
         bool modeChanged = displayManager.update(timeinfo.tm_hour, timeinfo.tm_min);
         if (modeChanged) {
             uiManager.setTheme(displayManager.getMode());

@@ -22,6 +22,10 @@ public:
     void updateNetwork(const char* ssid, const char* ip, int8_t rssi, bool connected, const char* syncState);
     void setTheme(DisplayMode mode);
 
+    // Framebuffer Capture over Serial
+    void requestCapture();
+    static bool isCaptureActive();
+
     // Status
     DisplayMode getActiveTheme() const { return _currentMode; }
 
