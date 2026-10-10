@@ -1,6 +1,9 @@
 #pragma once
 
 #include <Arduino.h>
+#include <cstring>
+#include <cstdlib>
+#include <cstdio>
 
 // ==========================================
 // Display Themes & Mode Definitions
