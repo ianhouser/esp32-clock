@@ -1,36 +1,35 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-09 16:45 PDT — Antigravity (Implemented modular web control panel, CardRegistry, dynamic theming, and 320x240 screen simulation for Issue #11)
+**Last updated:** 2026-10-10 10:55 PDT — Antigravity (Implemented streaming iCal CalendarManager, dynamic WeatherCard coordinates, and tile-based screen capture verification)
 
 ## Current Focus
 
 - **Milestone:** [v0.2-web-control](https://github.com/ianhouser/esp32-clock/milestone/2)
-- **Task:** Issue #11: Modular Web Control Panel & Customization Dashboard
+- **Task:** Issue #11: Modular Web Control Panel & Customization Dashboard (PR #12)
 - **Branch:** `feat/11-web-control-panel`
 - **Blockers:** None
 
 ## Last Three Decisions
 
-1. Architected modular `Card` interface and `CardRegistry` to decouple cards from core firmware: allows existing cards (`clock`, `weather`, `forecast`, `system`) and upcoming cards (`calendar`, `notifications`) to be toggled, reordered, and configured without modifying core engines — 2026-10-09
-2. Migrated partition table to custom 4MB layout (`partitions.csv`): provides 2MB app partition (reducing flash consumption from 95.4% down to 59.6%) and ~1.87MB LittleFS partition for web assets and dynamic `/config.json` — 2026-10-09
-3. Built Single-Page Control Panel in `data/` (`index.html`, `style.css`, `app.js`): features a responsive dark glassmorphic dashboard, real-time 320×240 HTML5 canvas preview simulating the ST7789 display, palette preset studio, and dynamic card reordering — 2026-10-09
+1. Built streaming line-by-line `CalendarManager` (`include/CalendarManager.h`, `src/CalendarManager.cpp`) using `WiFiClientSecure`: directly parses ~300+ KB Google Calendar iCal feeds over HTTPS without buffering in memory, preserving free heap (~80-100 KB free) — 2026-10-10
+2. Decoupled `WeatherManager` from static defines to dynamically bind to `WeatherCard` configuration: uses user's configured latitude (`34.2526`), longitude (`-118.4967`), and temperature units with a 10s initial recovery retry — 2026-10-10
+3. Re-architected USB CDC serial screen capture with coordinate-aware `TILED` packets (`TILE:x,y,w,h`): eliminates multi-strip raster shearing when partial rectangles/cards are flushed by LVGL — 2026-10-10
 
 ## What Just Happened
 
-- Created GitHub Issue [#11](https://github.com/ianhouser/esp32-clock/issues/11) under milestone `v0.2-web-control` and branched to `feat/11-web-control-panel`
-- Implemented `Card` base class (`include/cards/Card.h`) and `CardRegistry` (`include/cards/CardRegistry.h`, `src/cards/CardRegistry.cpp`)
-- Created concrete card implementations: `ClockCard`, `WeatherCard`, `ForecastCard`, `SystemCard`, plus extensible templates for `CalendarCard` and `NotificationCard`
-- Created `ConfigManager` (`include/ConfigManager.h`, `src/ConfigManager.cpp`) with LittleFS mounting and dynamic hex RGB565 theme conversion
-- Integrated `ESPAsyncWebServer` & `AsyncTCP` in `WebServerManager` with REST endpoints (`GET /api/config`, `POST /api/config`, `GET /api/status`, `POST /api/restart`) and mDNS discovery at `http://esp32-clock.local`
-- Built modern glassmorphic web control panel SPA in `data/` with dynamic card manager, theme studio, and live 320x240 canvas screen simulator
-- Configured 4MB custom partition table (`partitions.csv`), reducing flash usage to 59.6%
-- Verified with `pio run` (firmware) and `pio run -t buildfs` (LittleFS filesystem packaging) with 0 errors
+- Created `CalendarManager` streaming parser that extracts live upcoming and recent events from private Google Calendar iCal URLs and feeds them to `UIManager::updateCalendar`
+- Bound `WeatherManager` to `WeatherCard` settings so custom coordinates (North Hills) and units are applied both on boot and during dynamic web reload
+- Fixed font references in `UIManager.cpp` to supported `&lv_font_montserrat_12` and wired `setContainer` in `CalendarCard.h`
+- Upgraded `dispFlushCallback` and `scripts/capture_screen.py` to use `TILED` framing, eliminating capture tears
+- Uploaded firmware to ESP32 hardware and visually verified over serial framebuffer captures:
+  - Live weather rendered: 78°F, Overcast, 42% Humidity (North Hills)
+  - Live calendar rendered: Real events from user's Google Calendar feed ("Chiropractor Appointment", "Fix Bernie's Computer")
+- Pushed updates to `feat/11-web-control-panel`
 
 ## Next Up
 
-1. Test flashing firmware and LittleFS filesystem image to physical hardware (`pio run -t upload && pio run -t uploadfs`)
-2. Access `http://esp32-clock.local` in local browser to test live control and configuration
-3. Push branch and open Pull Request for Issue #11
+1. Add unit/integration tests for `CalendarManager` line parser edge cases
+2. Conduct final PR self-review on PR #12 and hand off to user for merge approval
 
 ## Open Risks / Watch List
 
