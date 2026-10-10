@@ -38,6 +38,8 @@ UIManager::UIManager()
       _lblEvent1Title(nullptr),
       _lblEvent1Time(nullptr),
       _lblEvent2Title(nullptr),
+      _dotEvent1(nullptr),
+      _dotEvent2(nullptr),
       _cardNotifications(nullptr),
       _lblNotifTitle(nullptr),
       _lblEmailAlert(nullptr),
@@ -379,25 +381,41 @@ void UIManager::buildDashboard() {
     lv_obj_set_style_text_font(_lblCalendarTitle, &lv_font_montserrat_12, 0);
     lv_obj_set_pos(_lblCalendarTitle, 4, 4);
 
+    _dotEvent1 = lv_obj_create(_cardCalendar);
+    lv_obj_set_size(_dotEvent1, 6, 6);
+    lv_obj_set_style_radius(_dotEvent1, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_border_width(_dotEvent1, 0, 0);
+    lv_obj_set_style_pad_all(_dotEvent1, 0, 0);
+    lv_obj_set_pos(_dotEvent1, 4, 30);
+    lv_obj_add_flag(_dotEvent1, LV_OBJ_FLAG_HIDDEN);
+
     _lblEvent1Title = lv_label_create(_cardCalendar);
     lv_label_set_text(_lblEvent1Title, "Loading...");
     lv_obj_set_style_text_font(_lblEvent1Title, &lv_font_montserrat_12, 0);
     lv_label_set_long_mode(_lblEvent1Title, LV_LABEL_LONG_DOT);
-    lv_obj_set_width(_lblEvent1Title, 138);
+    lv_obj_set_width(_lblEvent1Title, 130);
     lv_obj_set_pos(_lblEvent1Title, 4, 26);
 
     _lblEvent1Time = lv_label_create(_cardCalendar);
     lv_label_set_text(_lblEvent1Time, "Syncing calendar");
     lv_obj_set_style_text_font(_lblEvent1Time, &lv_font_montserrat_12, 0);
     lv_label_set_long_mode(_lblEvent1Time, LV_LABEL_LONG_DOT);
-    lv_obj_set_width(_lblEvent1Time, 138);
+    lv_obj_set_width(_lblEvent1Time, 130);
     lv_obj_set_pos(_lblEvent1Time, 4, 46);
+
+    _dotEvent2 = lv_obj_create(_cardCalendar);
+    lv_obj_set_size(_dotEvent2, 6, 6);
+    lv_obj_set_style_radius(_dotEvent2, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_border_width(_dotEvent2, 0, 0);
+    lv_obj_set_style_pad_all(_dotEvent2, 0, 0);
+    lv_obj_set_pos(_dotEvent2, 4, 78);
+    lv_obj_add_flag(_dotEvent2, LV_OBJ_FLAG_HIDDEN);
 
     _lblEvent2Title = lv_label_create(_cardCalendar);
     lv_label_set_text(_lblEvent2Title, "");
     lv_obj_set_style_text_font(_lblEvent2Title, &lv_font_montserrat_12, 0);
     lv_label_set_long_mode(_lblEvent2Title, LV_LABEL_LONG_DOT);
-    lv_obj_set_width(_lblEvent2Title, 138);
+    lv_obj_set_width(_lblEvent2Title, 130);
     lv_obj_set_pos(_lblEvent2Title, 4, 74);
 
     // 5. Notifications Card
@@ -690,10 +708,38 @@ void UIManager::updateWeather(const WeatherData& data, bool isFahrenheit, int to
     }
 }
 
-void UIManager::updateCalendar(const char* title, const char* ev1Title, const char* ev1Time, const char* ev2Title) {
+void UIManager::updateCalendar(const char* title,
+                               const char* ev1Title, const char* ev1Time, uint32_t ev1Color,
+                               const char* ev2Title, uint32_t ev2Color) {
     if (_lblCalendarTitle && title) lv_label_set_text(_lblCalendarTitle, title);
+
+    bool hasEv1 = (ev1Title && strlen(ev1Title) > 0 && strcmp(ev1Title, "No Upcoming Events") != 0 && strcmp(ev1Title, "Loading...") != 0);
+    if (_dotEvent1) {
+        if (hasEv1 && ev1Color != 0) {
+            lv_obj_set_style_bg_color(_dotEvent1, lv_color_hex(ev1Color), 0);
+            lv_obj_clear_flag(_dotEvent1, LV_OBJ_FLAG_HIDDEN);
+            if (_lblEvent1Title) lv_obj_set_pos(_lblEvent1Title, 14, 26);
+            if (_lblEvent1Time) lv_obj_set_pos(_lblEvent1Time, 14, 46);
+        } else {
+            lv_obj_add_flag(_dotEvent1, LV_OBJ_FLAG_HIDDEN);
+            if (_lblEvent1Title) lv_obj_set_pos(_lblEvent1Title, 4, 26);
+            if (_lblEvent1Time) lv_obj_set_pos(_lblEvent1Time, 4, 46);
+        }
+    }
     if (_lblEvent1Title && ev1Title) lv_label_set_text(_lblEvent1Title, ev1Title);
     if (_lblEvent1Time && ev1Time) lv_label_set_text(_lblEvent1Time, ev1Time);
+
+    bool hasEv2 = (ev2Title && strlen(ev2Title) > 0);
+    if (_dotEvent2) {
+        if (hasEv2 && ev2Color != 0) {
+            lv_obj_set_style_bg_color(_dotEvent2, lv_color_hex(ev2Color), 0);
+            lv_obj_clear_flag(_dotEvent2, LV_OBJ_FLAG_HIDDEN);
+            if (_lblEvent2Title) lv_obj_set_pos(_lblEvent2Title, 14, 74);
+        } else {
+            lv_obj_add_flag(_dotEvent2, LV_OBJ_FLAG_HIDDEN);
+            if (_lblEvent2Title) lv_obj_set_pos(_lblEvent2Title, 4, 74);
+        }
+    }
     if (_lblEvent2Title && ev2Title) lv_label_set_text(_lblEvent2Title, ev2Title);
 }
 

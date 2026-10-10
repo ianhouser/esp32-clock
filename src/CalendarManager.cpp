@@ -4,22 +4,45 @@
 #include <HTTPClient.h>
 #include <algorithm>
 
+static const char* MONTH_NAMES[] = {
+    "", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
+
+uint32_t CalendarManager::parseHexColor(const String& hexStr) {
+    if (hexStr.length() == 0) return 0x3B82F6;
+    const char* str = hexStr.c_str();
+    if (str[0] == '#') str++;
+    return (uint32_t)strtoul(str, nullptr, 16);
+}
+
 CalendarManager::CalendarManager()
-    : _url(""),
-      _maxEvents(3),
+    : _maxEvents(3),
       _updateIntervalMs(15 * 60 * 1000UL),
       _lastAttemptTime(0),
       _forceUpdateRequested(false),
       _isValid(false),
       _statusText("Not Synced") {}
 
-void CalendarManager::begin(const String& icalUrl, int maxEvents, unsigned long updateIntervalMs) {
-    _url = icalUrl;
+void CalendarManager::begin(const std::vector<CalendarSource>& sources, int maxEvents, unsigned long updateIntervalMs) {
+    _sources = sources;
     _maxEvents = (maxEvents > 0) ? maxEvents : 3;
     _updateIntervalMs = updateIntervalMs;
     _forceUpdateRequested = true;
-    Serial.printf("[CalendarManager] Configured with URL (%u chars), poll: %lu s\n",
-                  _url.length(), _updateIntervalMs / 1000UL);
+    _isValid = false;
+    Serial.printf("[CalendarManager] Configured with %d source(s), poll: %lu s\n",
+                  (int)_sources.size(), _updateIntervalMs / 1000UL);
+}
+
+void CalendarManager::begin(const String& icalUrl, int maxEvents, unsigned long updateIntervalMs) {
+    _sources.clear();
+    if (icalUrl.length() > 0) {
+        CalendarSource def;
+        def.name = "Primary";
+        def.url = icalUrl;
+        def.color = "#3B82F6";
+        _sources.push_back(def);
+    }
+    begin(_sources, maxEvents, updateIntervalMs);
 }
 
 void CalendarManager::forceUpdate() {
@@ -27,7 +50,7 @@ void CalendarManager::forceUpdate() {
 }
 
 bool CalendarManager::update(bool isWiFiConnected, const char* currentDateYmd) {
-    if (!isWiFiConnected || _url.length() == 0) {
+    if (!isWiFiConnected || _sources.empty()) {
         return false;
     }
 
@@ -42,10 +65,6 @@ bool CalendarManager::update(bool isWiFiConnected, const char* currentDateYmd) {
 
     return false;
 }
-
-static const char* const MONTH_NAMES[] = {
-    "", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-};
 
 void CalendarManager::formatEventTime(const String& dtstart, String& outTimeStr, const char* currentDateYmd) {
     if (dtstart.length() < 8) {
@@ -84,18 +103,20 @@ void CalendarManager::formatEventTime(const String& dtstart, String& outTimeStr,
     }
 }
 
-bool CalendarManager::fetchCalendar(const char* currentDateYmd) {
-    Serial.println("[CalendarManager] Connecting to iCal stream over HTTPS...");
-    _statusText = "Syncing...";
+bool CalendarManager::fetchSource(const CalendarSource& source, const char* currentDateYmd, std::vector<CalendarEvent>& outEvents) {
+    if (source.url.length() == 0) {
+        return false;
+    }
+
+    Serial.printf("[CalendarManager] Streaming feed '%s' (%s)...\n", source.name.c_str(), source.color.c_str());
 
     WiFiClientSecure client;
     client.setInsecure();
-    client.setTimeout(10); // 10 seconds timeout
+    client.setTimeout(10);
 
     HTTPClient http;
-    if (!http.begin(client, _url)) {
-        Serial.println("[CalendarManager] HTTPClient begin failed");
-        _statusText = "Connect Err";
+    if (!http.begin(client, source.url)) {
+        Serial.printf("[CalendarManager] HTTPClient begin failed for '%s'\n", source.name.c_str());
         return false;
     }
 
@@ -104,31 +125,29 @@ bool CalendarManager::fetchCalendar(const char* currentDateYmd) {
     int httpCode = http.GET();
 
     if (httpCode != HTTP_CODE_OK) {
-        Serial.printf("[CalendarManager] HTTP GET failed: %d\n", httpCode);
-        _statusText = (httpCode > 0) ? "HTTP Error" : "Timeout";
+        Serial.printf("[CalendarManager] HTTP GET failed for '%s': %d\n", source.name.c_str(), httpCode);
         http.end();
         return false;
     }
 
     WiFiClient* stream = http.getStreamPtr();
     if (!stream) {
-        Serial.println("[CalendarManager] Stream pointer was null");
+        Serial.printf("[CalendarManager] Stream pointer null for '%s'\n", source.name.c_str());
         http.end();
         return false;
     }
 
-    std::vector<CalendarEvent> futureEvents;
-    std::vector<CalendarEvent> recentEvents;
-
+    uint32_t colorHex = parseHexColor(source.color);
     String curSummary = "";
     String curDtStart = "";
-    int totalEventsParsed = 0;
+    int sourceParsed = 0;
+    int sourceFuture = 0;
     unsigned long startStream = millis();
     unsigned long lastYield = millis();
 
     while (http.connected() && (stream->available() || stream->connected())) {
-        if (millis() - startStream > 25000) { // Safety timeout 25s
-            Serial.println("[CalendarManager] Stream read exceeded safety timeout");
+        if (millis() - startStream > 25000) { // Safety timeout 25s per stream
+            Serial.printf("[CalendarManager] Stream '%s' exceeded timeout\n", source.name.c_str());
             break;
         }
 
@@ -157,47 +176,84 @@ bool CalendarManager::fetchCalendar(const char* currentDateYmd) {
             }
         } else if (line.startsWith("END:VEVENT")) {
             if (curSummary.length() > 0 && curDtStart.length() >= 8) {
-                totalEventsParsed++;
-
-                CalendarEvent ev;
-                ev.summary = curSummary;
-                ev.rawStart = curDtStart;
-                formatEventTime(curDtStart, ev.timeStr, currentDateYmd);
+                sourceParsed++;
 
                 String dateYmd = curDtStart.substring(0, 8);
                 bool isFuture = (!currentDateYmd || dateYmd >= currentDateYmd);
 
                 if (isFuture) {
-                    futureEvents.push_back(ev);
-                } else {
-                    recentEvents.push_back(ev);
-                    // Keep recentEvents bounded to last 5
-                    if (recentEvents.size() > 5) {
-                        recentEvents.erase(recentEvents.begin());
-                    }
+                    sourceFuture++;
+                    CalendarEvent ev;
+                    ev.summary = curSummary;
+                    ev.rawStart = curDtStart;
+                    ev.colorHex = colorHex;
+                    ev.sourceName = source.name;
+                    formatEventTime(curDtStart, ev.timeStr, currentDateYmd);
+                    outEvents.push_back(ev);
                 }
             }
         }
     }
 
     http.end();
-    Serial.printf("[CalendarManager] Finished parse: %d events found (%u future, %u recent)\n",
-                  totalEventsParsed, futureEvents.size(), recentEvents.size());
+    Serial.printf("[CalendarManager] Feed '%s': %d events parsed, %d upcoming retained\n",
+                  source.name.c_str(), sourceParsed, sourceFuture);
+    return true;
+}
+
+bool CalendarManager::fetchCalendar(const char* currentDateYmd) {
+    if (_sources.empty()) {
+        _statusText = "No Sources";
+        _events.clear();
+        return false;
+    }
+
+    Serial.printf("[CalendarManager] Starting aggregation across %d calendar feed(s)...\n", (int)_sources.size());
+    _statusText = "Syncing...";
+
+    std::vector<CalendarEvent> allFutureEvents;
+    bool atLeastOneSuccess = false;
+
+    for (size_t i = 0; i < _sources.size(); ++i) {
+        if (i > 0) {
+            // Buffer between feeds to allow TLS cleanup and UI render
+            for (int k = 0; k < 4; ++k) {
+                NetworkTaskCoordinator::yieldUI();
+                delay(50);
+            }
+        }
+
+        bool ok = fetchSource(_sources[i], currentDateYmd, allFutureEvents);
+        if (ok) {
+            atLeastOneSuccess = true;
+        }
+    }
+
+    if (!atLeastOneSuccess) {
+        _statusText = "Sync Failed";
+        return false;
+    }
+
+    // Sort all merged future events chronologically
+    std::sort(allFutureEvents.begin(), allFutureEvents.end(), [](const CalendarEvent& a, const CalendarEvent& b) {
+        return a.rawStart < b.rawStart;
+    });
 
     _events.clear();
-    if (!futureEvents.empty()) {
-        std::sort(futureEvents.begin(), futureEvents.end(), [](const CalendarEvent& a, const CalendarEvent& b) {
-            return a.rawStart < b.rawStart;
-        });
-        size_t count = std::min((size_t)_maxEvents, futureEvents.size());
+    if (!allFutureEvents.empty()) {
+        size_t count = std::min((size_t)_maxEvents, allFutureEvents.size());
         for (size_t i = 0; i < count; i++) {
-            _events.push_back(futureEvents[i]);
+            _events.push_back(allFutureEvents[i]);
         }
-        _statusText = "Synced";
+        _isValid = true;
+        _statusText = String(_events.size()) + " Events";
     } else {
+        _isValid = true;
         _statusText = "No Upcoming Events";
     }
 
-    _isValid = true;
+    Serial.printf("[CalendarManager] Aggregation complete: %u total future events, %u selected for display\n",
+                  allFutureEvents.size(), _events.size());
+
     return true;
 }

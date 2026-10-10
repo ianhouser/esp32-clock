@@ -721,3 +721,118 @@ input:checked + .slider:before {
   color: var(--text-dim);
   font-style: italic;
 }
+
+/* Multi-Calendar Feeds Manager */
+.section-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.calendar-sources-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.calendar-source-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.calendar-source-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.source-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.source-color-picker {
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+}
+
+.source-color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.source-color-picker::-webkit-color-swatch {
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.source-name {
+  flex: 1;
+  font-size: 0.85rem;
+  padding: 6px 10px;
+}
+
+.source-url-row {
+  display: flex;
+  width: 100%;
+}
+
+.source-url {
+  width: 100%;
+  font-size: 0.78rem;
+  padding: 6px 8px;
+}
+
+.btn-remove-source {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-remove-source:hover:not(:disabled) {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-subtle {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-subtle:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--accent);
+}

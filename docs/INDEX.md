@@ -16,5 +16,7 @@
 | `docs/plans/2026-10-09-issue-7-weather-telemetry.md` | developer | 2026-10-09 | Implementation plan — live weather telemetry ingestion via Open-Meteo REST API. |
 | `docs/plans/2026-10-09-issue-9-lvgl-modern-dashboard.md` | developer | 2026-10-09 | Implementation plan — LVGL integration and modern digital dashboard UI (Concept A). |
 | `docs/plans/2026-10-09-issue-11-modular-web-control-panel.md` | developer | 2026-10-09 | Implementation plan — modular web control panel, live 320x240 screen simulation, and customization dashboard. |
+| `docs/specs/2026-10-10-multi-calendar-sources-design.md` | architecture | 2026-10-10 | Specification — multi-source calendar aggregation with colored dot category indicators. |
+| `docs/plans/2026-10-10-multi-calendar-sources.md` | developer | 2026-10-10 | Implementation plan — multi-calendar source ingestion, chronological merging, and web UI editor. |
 | `AGENTS.md` | reference | 2026-10-04 | Agent hub — binding decisions, stop rules, and critical gotchas. |
 | `CONTRIBUTING.md` | developer | 2026-10-04 | Contributing — mandatory git workflow and coding standards. |

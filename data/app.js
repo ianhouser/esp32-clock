@@ -422,7 +422,25 @@ function renderCardConfigFields(card) {
           </div>
         </div>
       `;
-    case 'calendar':
+    case 'calendar': {
+      const sources = (card.config && card.config.sources && card.config.sources.length)
+        ? card.config.sources
+        : [{ name: 'Primary', url: cfg.calendar_url || '', color: '#3B82F6' }];
+
+      const sourcesHtml = sources.map((src, idx) => `
+        <div class="calendar-source-card" data-index="${idx}">
+          <div class="source-header">
+            <span class="source-color-dot" style="background-color: ${src.color || '#3B82F6'}"></span>
+            <input type="text" class="input-field source-name" placeholder="Calendar Name (e.g. Family)" value="${src.name || 'Calendar'}">
+            <input type="color" class="source-color-picker" value="${src.color || '#3B82F6'}" title="Pick source color">
+            <button type="button" class="btn-icon btn-remove-source" title="Remove feed" ${sources.length === 1 ? 'disabled style="opacity:0.4"' : ''}>✕</button>
+          </div>
+          <div class="source-url-row">
+            <input type="text" class="input-field font-mono source-url" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics" value="${src.url || ''}">
+          </div>
+        </div>
+      `).join('');
+
       return `
         <div class="form-grid">
           <div class="form-row">
@@ -437,11 +455,17 @@ function renderCardConfigFields(card) {
             </select>
           </div>
           <div class="form-row full-width">
-            <label>iCal Calendar URL</label>
-            <input type="text" placeholder="https://calendar.google.com/calendar/ical/..." class="input-field font-mono" data-key="calendar_url" value="${cfg.calendar_url || ''}">
+            <div class="section-label-row">
+              <label>Calendar Feeds & Category Colors</label>
+              <button type="button" class="btn-subtle btn-add-source">+ Add Calendar Feed</button>
+            </div>
+            <div class="calendar-sources-container">
+              ${sourcesHtml}
+            </div>
           </div>
         </div>
       `;
+    }
     case 'notifications':
       return `
         <div class="form-grid">
@@ -498,6 +522,71 @@ function bindCardConfigInputs(item, card) {
       renderPreview();
     });
   });
+
+  if (card.id === 'calendar') {
+    const updateSources = () => {
+      const rows = item.querySelectorAll('.calendar-source-card');
+      const sources = [];
+      rows.forEach(row => {
+        const name = row.querySelector('.source-name').value.trim() || 'Calendar';
+        const url = row.querySelector('.source-url').value.trim();
+        const color = row.querySelector('.source-color-picker').value || '#3B82F6';
+        if (url) {
+          sources.push({ name, url, color });
+        }
+      });
+      if (!card.config) card.config = {};
+      card.config.sources = sources;
+      card.config.calendar_url = sources[0]?.url || '';
+      renderPreview();
+    };
+
+    item.querySelectorAll('.source-name, .source-url').forEach(inp => {
+      inp.addEventListener('input', updateSources);
+    });
+
+    item.querySelectorAll('.source-color-picker').forEach(cp => {
+      cp.addEventListener('input', (e) => {
+        const dot = cp.closest('.calendar-source-card').querySelector('.source-color-dot');
+        if (dot) dot.style.backgroundColor = e.target.value;
+        updateSources();
+      });
+    });
+
+    item.querySelectorAll('.btn-remove-source').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const cardEl = e.target.closest('.calendar-source-card');
+        cardEl.remove();
+        updateSources();
+      });
+    });
+
+    const addBtn = item.querySelector('.btn-add-source');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        const presetColors = ['#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
+        const container = item.querySelector('.calendar-sources-container');
+        const count = container.querySelectorAll('.calendar-source-card').length;
+        const nextColor = presetColors[count % presetColors.length];
+        const newCard = document.createElement('div');
+        newCard.className = 'calendar-source-card';
+        newCard.innerHTML = `
+          <div class="source-header">
+            <span class="source-color-dot" style="background-color: ${nextColor}"></span>
+            <input type="text" class="input-field source-name" placeholder="Calendar Name (e.g. Family)" value="Calendar ${count + 1}">
+            <input type="color" class="source-color-picker" value="${nextColor}" title="Pick source color">
+            <button type="button" class="btn-icon btn-remove-source" title="Remove feed">✕</button>
+          </div>
+          <div class="source-url-row">
+            <input type="text" class="input-field font-mono source-url" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics" value="">
+          </div>
+        `;
+        container.appendChild(newCard);
+        bindCardConfigInputs(item, card);
+        updateSources();
+      });
+    }
+  }
 
   // GPS detect button for weather card
   const gpsBtn = item.querySelector('.btn-detect-gps');
@@ -816,17 +905,29 @@ function drawSubCard(ctx, x, y, w, h, card, colCard, colBorder, colAccent, colTe
       ctx.textAlign = 'left';
       ctx.fillText('Upcoming Agenda', x + 14, y + 24);
 
+      // Event 1 with Blue Dot
+      ctx.fillStyle = '#3B82F6';
+      ctx.beginPath();
+      ctx.arc(x + 18, y + 48, 3, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.fillStyle = colText;
       ctx.font = '600 12px "Outfit", sans-serif';
-      ctx.fillText('Team Standup', x + 14, y + 52);
+      ctx.fillText('Team Standup', x + 26, y + 52);
 
       ctx.fillStyle = colMuted;
       ctx.font = '400 10px "Outfit", sans-serif';
-      ctx.fillText('in 25 mins • Zoom', x + 14, y + 70);
+      ctx.fillText('in 25 mins • Zoom', x + 26, y + 70);
+
+      // Event 2 with Emerald Dot
+      ctx.fillStyle = '#10B981';
+      ctx.beginPath();
+      ctx.arc(x + 18, y + 91, 3, 0, Math.PI * 2);
+      ctx.fill();
 
       ctx.fillStyle = colText;
       ctx.font = '500 11px "Outfit", sans-serif';
-      ctx.fillText('Design Sync', x + 14, y + 95);
+      ctx.fillText('Family Dinner', x + 26, y + 95);
       break;
     }
     case 'notifications': {

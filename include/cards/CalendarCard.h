@@ -1,6 +1,8 @@
 #pragma once
 
 #include "cards/Card.h"
+#include "CalendarManager.h"
+#include <vector>
 
 class CalendarCard : public Card {
 public:
@@ -28,6 +30,8 @@ public:
     int getMaxEvents() const { return _maxEvents; }
     bool showCountdown() const { return _showCountdown; }
     const String& getCalendarUrl() const { return _calendarUrl; }
+    const std::vector<CalendarSource>& getSources() const { return _sources; }
+    void setSources(const std::vector<CalendarSource>& sources) { _sources = sources; }
 
 private:
     bool _enabled;
@@ -35,5 +39,6 @@ private:
     int _maxEvents;
     bool _showCountdown;
     String _calendarUrl;
+    std::vector<CalendarSource> _sources;
     lv_obj_t* _container;
 };

@@ -82,10 +82,11 @@ void applyServicesConfig() {
     }
 
     CalendarCard* cc = (CalendarCard*)CardRegistry::getInstance().getCard("calendar");
-    if (cc && cc->getCalendarUrl().length() > 0) {
-        Serial.printf("[main] Configuring Calendar: URL: %s, Max: %d\n",
-                      cc->getCalendarUrl().c_str(), cc->getMaxEvents());
-        calendarManager.begin(cc->getCalendarUrl(), cc->getMaxEvents());
+    if (cc && (!cc->getSources().empty() || cc->getCalendarUrl().length() > 0)) {
+        const auto& sources = cc->getSources();
+        Serial.printf("[main] Configuring Calendar: %d source(s), Max: %d\n",
+                      (int)sources.size(), cc->getMaxEvents());
+        calendarManager.begin(sources, cc->getMaxEvents());
         NetworkTaskCoordinator::getInstance().registerTask(
             "calendar",
             15 * 60 * 1000UL, // 15 min poll
@@ -102,11 +103,12 @@ void applyServicesConfig() {
                 if (ok) {
                     const auto& events = calendarManager.getEvents();
                     if (events.empty()) {
-                        uiManager.updateCalendar("Upcoming Agenda", "No Upcoming Events", "All caught up", "");
+                        uiManager.updateCalendar("Upcoming Agenda", "No Upcoming Events", "All caught up", 0, "", 0);
                     } else if (events.size() == 1) {
-                        uiManager.updateCalendar("Upcoming Agenda", events[0].summary.c_str(), events[0].timeStr.c_str(), "");
+                        uiManager.updateCalendar("Upcoming Agenda", events[0].summary.c_str(), events[0].timeStr.c_str(), events[0].colorHex, "", 0);
                     } else {
-                        uiManager.updateCalendar("Upcoming Agenda", events[0].summary.c_str(), events[0].timeStr.c_str(), events[1].summary.c_str());
+                        uiManager.updateCalendar("Upcoming Agenda", events[0].summary.c_str(), events[0].timeStr.c_str(), events[0].colorHex,
+                                                 events[1].summary.c_str(), events[1].colorHex);
                     }
                 }
                 return ok;

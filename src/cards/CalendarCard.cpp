@@ -12,6 +12,14 @@ void CalendarCard::serializeConfig(JsonObject& doc) const {
     doc["max_events"] = _maxEvents;
     doc["show_countdown"] = _showCountdown;
     doc["calendar_url"] = _calendarUrl;
+
+    JsonArray sourcesArr = doc["sources"].to<JsonArray>();
+    for (const auto& src : _sources) {
+        JsonObject srcObj = sourcesArr.add<JsonObject>();
+        srcObj["name"] = src.name;
+        srcObj["url"] = src.url;
+        srcObj["color"] = src.color;
+    }
 }
 
 void CalendarCard::deserializeConfig(const JsonObjectConst& doc) {
@@ -23,6 +31,28 @@ void CalendarCard::deserializeConfig(const JsonObjectConst& doc) {
     }
     if (doc["calendar_url"].is<const char*>()) {
         _calendarUrl = doc["calendar_url"].as<String>();
+    }
+
+    _sources.clear();
+    if (doc["sources"].is<JsonArrayConst>()) {
+        for (JsonObjectConst srcObj : doc["sources"].as<JsonArrayConst>()) {
+            CalendarSource src;
+            src.name = srcObj["name"] | "Calendar";
+            src.url = srcObj["url"] | "";
+            src.color = srcObj["color"] | "#3B82F6";
+            if (src.url.length() > 0) {
+                _sources.push_back(src);
+            }
+        }
+    }
+
+    // Fallback: if no sources in array but legacy calendar_url is configured
+    if (_sources.empty() && _calendarUrl.length() > 0) {
+        CalendarSource def;
+        def.name = "Primary";
+        def.url = _calendarUrl;
+        def.color = "#3B82F6";
+        _sources.push_back(def);
     }
 }
 
