@@ -39,10 +39,6 @@ void WebServerManager::stop() {
 }
 
 void WebServerManager::setupRoutes() {
-    // 1. Static Web Control Panel Files
-    _server.serveStatic("/", LittleFS, "/")
-           .setDefaultFile("index.html")
-           .setCacheControl("max-age=300");
 
     // 2. GET /api/config
     _server.on("/api/config", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -111,7 +107,12 @@ void WebServerManager::setupRoutes() {
         }, "restart_task", 2048, NULL, 1, NULL);
     });
 
-    // 6. Handle OPTIONS for CORS
+    // 6. Static Web Control Panel Files
+    _server.serveStatic("/", LittleFS, "/")
+           .setDefaultFile("index.html")
+           .setCacheControl("max-age=300");
+
+    // 7. Handle OPTIONS for CORS and Fallback 404
     _server.onNotFound([](AsyncWebServerRequest *request) {
         if (request->method() == HTTP_OPTIONS) {
             AsyncWebServerResponse *response = request->beginResponse(204);

@@ -16,6 +16,7 @@ public:
     void begin(const String& icalUrl, int maxEvents = 3, unsigned long updateIntervalMs = 15 * 60 * 1000UL);
     bool update(bool isWiFiConnected, const char* currentDateYmd = nullptr);
     void forceUpdate();
+    bool executeFetch(const char* currentDateYmd = nullptr) { return fetchCalendar(currentDateYmd); }
 
     bool hasValidData() const { return _isValid; }
     const std::vector<CalendarEvent>& getEvents() const { return _events; }

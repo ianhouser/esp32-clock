@@ -63,14 +63,6 @@ void UIManager::dispFlushCallback(lv_disp_drv_t* disp, const lv_area_t* area, lv
         s_tft->pushColors((uint16_t*)&color_p->full, w * h, false);
         s_tft->endWrite();
 
-        if (s_capturePending && area->x1 == 0 && area->y1 == 0) {
-            s_capturePending = false;
-            s_captureActive = true;
-            s_capturePixelCount = 0;
-            Serial.println("\n===CAPTURE_PPM_B64_START===");
-            Serial.println("TILED");
-        }
-
         if (s_captureActive) {
             Serial.printf("TILE:%d,%d,%d,%d\n", area->x1, area->y1, w, h);
             static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -111,8 +103,10 @@ void UIManager::dispFlushCallback(lv_disp_drv_t* disp, const lv_area_t* area, lv
 }
 
 void UIManager::requestCapture() {
-    s_capturePending = true;
-    s_captureActive = false;
+    s_captureActive = true;
+    s_capturePixelCount = 0;
+    Serial.println("\n===CAPTURE_PPM_B64_START===");
+    Serial.println("TILED");
     lv_obj_invalidate(lv_scr_act());
 }
 
@@ -386,18 +380,24 @@ void UIManager::buildDashboard() {
     lv_obj_set_pos(_lblCalendarTitle, 4, 4);
 
     _lblEvent1Title = lv_label_create(_cardCalendar);
-    lv_label_set_text(_lblEvent1Title, "Team Standup");
+    lv_label_set_text(_lblEvent1Title, "Loading...");
     lv_obj_set_style_text_font(_lblEvent1Title, &lv_font_montserrat_12, 0);
+    lv_label_set_long_mode(_lblEvent1Title, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(_lblEvent1Title, 138);
     lv_obj_set_pos(_lblEvent1Title, 4, 26);
 
     _lblEvent1Time = lv_label_create(_cardCalendar);
-    lv_label_set_text(_lblEvent1Time, "in 25 mins - Zoom");
+    lv_label_set_text(_lblEvent1Time, "Syncing calendar");
     lv_obj_set_style_text_font(_lblEvent1Time, &lv_font_montserrat_12, 0);
+    lv_label_set_long_mode(_lblEvent1Time, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(_lblEvent1Time, 138);
     lv_obj_set_pos(_lblEvent1Time, 4, 46);
 
     _lblEvent2Title = lv_label_create(_cardCalendar);
-    lv_label_set_text(_lblEvent2Title, "Design Sync");
+    lv_label_set_text(_lblEvent2Title, "");
     lv_obj_set_style_text_font(_lblEvent2Title, &lv_font_montserrat_12, 0);
+    lv_label_set_long_mode(_lblEvent2Title, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(_lblEvent2Title, 138);
     lv_obj_set_pos(_lblEvent2Title, 4, 74);
 
     // 5. Notifications Card

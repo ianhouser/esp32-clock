@@ -35,8 +35,22 @@
 #define PWM_BL_NIGHT_DUTY   38   // ~15% duty for dark environments
 
 // Weather Telemetry Configuration (Open-Meteo REST API)
-#define DEFAULT_WEATHER_LAT           37.7749f   // Default: San Francisco, CA
+#if __has_include("secrets.h")
+#include "secrets.h"
+#endif
+
+#ifdef WEATHER_LAT
+#define DEFAULT_WEATHER_LAT           atof(WEATHER_LAT)
+#else
+#define DEFAULT_WEATHER_LAT           37.7749f
+#endif
+
+#ifdef WEATHER_LON
+#define DEFAULT_WEATHER_LON           atof(WEATHER_LON)
+#else
 #define DEFAULT_WEATHER_LON          -122.4194f
+#endif
+
 #define DEFAULT_WEATHER_USE_FAHR      true       // true = Fahrenheit (°F), false = Celsius (°C)
 #define WEATHER_UPDATE_INTERVAL_MS    (15 * 60 * 1000UL) // 15 minutes between API queries
 #define WEATHER_RETRY_INTERVAL_MS     (60 * 1000UL)      // 1 minute retry on failure

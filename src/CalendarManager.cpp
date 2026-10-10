@@ -1,4 +1,5 @@
 #include "CalendarManager.h"
+#include "NetworkTaskCoordinator.h"
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <algorithm>
@@ -123,15 +124,21 @@ bool CalendarManager::fetchCalendar(const char* currentDateYmd) {
     String curDtStart = "";
     int totalEventsParsed = 0;
     unsigned long startStream = millis();
+    unsigned long lastYield = millis();
 
     while (http.connected() && (stream->available() || stream->connected())) {
-        if (millis() - startStream > 20000) { // Safety timeout 20s
+        if (millis() - startStream > 25000) { // Safety timeout 25s
             Serial.println("[CalendarManager] Stream read exceeded safety timeout");
             break;
         }
 
+        if (millis() - lastYield > 40) {
+            NetworkTaskCoordinator::yieldUI();
+            lastYield = millis();
+        }
+
         if (!stream->available()) {
-            delay(10);
+            delay(5);
             continue;
         }
 
@@ -187,17 +194,8 @@ bool CalendarManager::fetchCalendar(const char* currentDateYmd) {
             _events.push_back(futureEvents[i]);
         }
         _statusText = "Synced";
-    } else if (!recentEvents.empty()) {
-        // When no future events exist in calendar feed, show the most recent event from the feed
-        // Reverse order so latest is first
-        for (int i = recentEvents.size() - 1; i >= 0 && _events.size() < (size_t)_maxEvents; i--) {
-            CalendarEvent ev = recentEvents[i];
-            ev.timeStr = ev.timeStr + " (Recent)";
-            _events.push_back(ev);
-        }
-        _statusText = "Synced (Recent)";
     } else {
-        _statusText = "No Events";
+        _statusText = "No Upcoming Events";
     }
 
     _isValid = true;

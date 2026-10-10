@@ -1,6 +1,6 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-10 10:55 PDT — Antigravity (Implemented streaming iCal CalendarManager, dynamic WeatherCard coordinates, and tile-based screen capture verification)
+**Last updated:** 2026-10-10 11:30 PDT — Antigravity (Implemented NetworkTaskCoordinator to queue network tasks, yield during TLS streams, and verified physical display)
 
 ## Current Focus
 
@@ -11,19 +11,20 @@
 
 ## Last Three Decisions
 
-1. Built streaming line-by-line `CalendarManager` (`include/CalendarManager.h`, `src/CalendarManager.cpp`) using `WiFiClientSecure`: directly parses ~300+ KB Google Calendar iCal feeds over HTTPS without buffering in memory, preserving free heap (~80-100 KB free) — 2026-10-10
-2. Decoupled `WeatherManager` from static defines to dynamically bind to `WeatherCard` configuration: uses user's configured latitude (`34.2526`), longitude (`-118.4967`), and temperature units with a 10s initial recovery retry — 2026-10-10
-3. Re-architected USB CDC serial screen capture with coordinate-aware `TILED` packets (`TILE:x,y,w,h`): eliminates multi-strip raster shearing when partial rectangles/cards are flushed by LVGL — 2026-10-10
+1. Built `NetworkTaskCoordinator` (`include/NetworkTaskCoordinator.h`, `src/NetworkTaskCoordinator.cpp`): serializes network tasks (weather, calendar, future notifications/email) with priority, interval management, boot staggering, and cooldown buffers to prevent TLS heap exhaustion and watchdog lockups — 2026-10-10
+2. Added cooperative UI yielding (`NetworkTaskCoordinator::yieldUI()`) inside `CalendarManager` streaming loop: allows LVGL rendering and clock ticking to advance smoothly during large (~308 KB) HTTPS iCal transfers — 2026-10-10
+3. Added `&timezone=auto` to Open-Meteo and strictly filtered events by current local date: accurately displays local Pacific Time min/max temperatures (80°F, H: 84°F) and displays a clean "No Upcoming Events / All caught up" agenda state — 2026-10-10
 
 ## What Just Happened
 
-- Created `CalendarManager` streaming parser that extracts live upcoming and recent events from private Google Calendar iCal URLs and feeds them to `UIManager::updateCalendar`
-- Bound `WeatherManager` to `WeatherCard` settings so custom coordinates (North Hills) and units are applied both on boot and during dynamic web reload
-- Fixed font references in `UIManager.cpp` to supported `&lv_font_montserrat_12` and wired `setContainer` in `CalendarCard.h`
-- Upgraded `dispFlushCallback` and `scripts/capture_screen.py` to use `TILED` framing, eliminating capture tears
-- Uploaded firmware to ESP32 hardware and visually verified over serial framebuffer captures:
-  - Live weather rendered: 78°F, Overcast, 42% Humidity (North Hills)
-  - Live calendar rendered: Real events from user's Google Calendar feed ("Chiropractor Appointment", "Fix Bernie's Computer")
+- Implemented `NetworkTaskCoordinator` to queue all network operations sequentially and support future card additions (email, notifications, feeds) without crashing
+- Injected `yieldUI()` into `CalendarManager` streaming loop, completely resolving boot freezing
+- Fixed `WebServerManager` route ordering so `/api/*` endpoints are registered before `serveStatic("/", ...)`
+- Configured PlatformIO upload flags (`--no-stub`, `115200` baud) for reliable native USB-CDC flashing on ESP32-C3
+- Flashed firmware to physical ESP32 hardware and verified over serial framebuffer captures:
+  - Live weather: `78°F` / `Overcast` / `H: 84° / L: 67°` / `Feels 78° | 41% Hum`
+  - Live calendar: `Upcoming Agenda` / `No Upcoming Events` / `All caught up`
+  - Free heap remains healthy at > 126 KB even after concurrent web server and TLS transfers
 - Pushed updates to `feat/11-web-control-panel`
 
 ## Next Up
