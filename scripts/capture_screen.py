@@ -33,22 +33,28 @@ def open_serial_port(port, baudrate=115200):
     termios.tcsetattr(fd, termios.TCSANOW, attrs)
     return fd
 
-def read_line(fd, timeout=3.0):
+def read_line(fd, timeout=3.0, residual=None):
     start = time.time()
-    buf = bytearray()
+    buf = bytearray() if residual is None else residual
     while time.time() - start < timeout:
+        if b'\n' in buf:
+            idx = buf.index(b'\n')
+            line = buf[:idx].decode("utf-8", errors="ignore").strip()
+            del buf[:idx+1]
+            return line
         try:
-            chunk = os.read(fd, 1)
+            chunk = os.read(fd, 4096)
             if chunk:
-                if chunk == b'\n':
-                    return buf.decode("utf-8", errors="ignore").strip()
-                elif chunk != b'\r':
-                    buf.extend(chunk)
+                buf.extend(chunk)
             else:
                 time.sleep(0.005)
         except BlockingIOError:
             time.sleep(0.005)
-    return buf.decode("utf-8", errors="ignore").strip() if buf else None
+    if buf:
+        line = buf.decode("utf-8", errors="ignore").strip()
+        buf.clear()
+        return line
+    return None
 
 def capture_screen(port=None, output_path="artifacts/screen_capture.png"):
     if not port:
@@ -67,8 +73,9 @@ def capture_screen(port=None, output_path="artifacts/screen_capture.png"):
     # Wait for header
     start_time = time.time()
     header_found = False
+    residual = bytearray()
     while time.time() - start_time < 5.0:
-        line = read_line(fd, timeout=1.0)
+        line = read_line(fd, timeout=1.0, residual=residual)
         if line and "===CAPTURE_PPM_B64_START===" in line:
             header_found = True
             break
@@ -78,9 +85,45 @@ def capture_screen(port=None, output_path="artifacts/screen_capture.png"):
         os.close(fd)
         return False
 
-    magic = read_line(fd, timeout=2.0)
-    dims = read_line(fd, timeout=2.0)
-    max_val = read_line(fd, timeout=2.0)
+    magic = read_line(fd, timeout=2.0, residual=residual)
+
+    if magic == "TILED":
+        width, height = 320, 240
+        print(f"[capture] Receiving TILED stream for {width}x{height} image...")
+        img = Image.new("RGB", (width, height), (0, 0, 0))
+        cur_tile = None
+        cur_b64 = []
+
+        while time.time() - start_time < 12.0:
+            line = read_line(fd, timeout=1.0, residual=residual)
+            if line is None:
+                continue
+            if "===CAPTURE_PPM_B64_END===" in line:
+                break
+            if line.startswith("TILE:"):
+                cur_tile = [int(v) for v in line[5:].split(",")]
+                cur_b64 = []
+            elif line == "END_TILE":
+                if cur_tile and cur_b64:
+                    x, y, w, h = cur_tile
+                    tile_bytes = base64.b64decode("".join(cur_b64))
+                    if len(tile_bytes) == w * h * 3:
+                        tile_img = Image.frombytes("RGB", (w, h), tile_bytes)
+                        img.paste(tile_img, (x, y))
+                cur_tile = None
+                cur_b64 = []
+            elif line and not line.startswith("[") and " " not in line:
+                cur_b64.append(line)
+
+        os.close(fd)
+        out_file = Path(output_path)
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+        img.save(str(out_file))
+        print(f"[capture] Successfully saved screenshot to: {out_file.resolve()}")
+        return str(out_file.resolve())
+
+    dims = read_line(fd, timeout=2.0, residual=residual)
+    max_val = read_line(fd, timeout=2.0, residual=residual)
 
     if not dims:
         print("[capture] Error: Failed to read image dimensions")
@@ -92,12 +135,16 @@ def capture_screen(port=None, output_path="artifacts/screen_capture.png"):
 
     b64_chunks = []
     while time.time() - start_time < 12.0:
-        line = read_line(fd, timeout=1.0)
+        line = read_line(fd, timeout=1.0, residual=residual)
         if line is None:
             continue
         if "===CAPTURE_PPM_B64_END===" in line:
+            idx = line.find("===CAPTURE_PPM_B64_END===")
+            prefix = line[:idx].strip()
+            if prefix and not prefix.startswith("[") and " " not in prefix:
+                b64_chunks.append(prefix)
             break
-        if line:
+        if line and not line.startswith("[") and " " not in line:
             b64_chunks.append(line)
 
     os.close(fd)

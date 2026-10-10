@@ -4,6 +4,9 @@
 #include "cards/ClockCard.h"
 #include "cards/WeatherCard.h"
 #include "cards/ForecastCard.h"
+#include "cards/CalendarCard.h"
+#include "cards/NotificationCard.h"
+#include "cards/SystemCard.h"
 
 static TFT_eSPI* s_tft = nullptr;
 
@@ -29,8 +32,23 @@ UIManager::UIManager()
       _lblDay1HighLow(nullptr),
       _lblDay2Name(nullptr),
       _iconDay2(nullptr),
-      _lblDay2HighLow(nullptr) {}
+      _lblDay2HighLow(nullptr),
+      _cardCalendar(nullptr),
+      _lblCalendarTitle(nullptr),
+      _lblEvent1Title(nullptr),
+      _lblEvent1Time(nullptr),
+      _lblEvent2Title(nullptr),
+      _cardNotifications(nullptr),
+      _lblNotifTitle(nullptr),
+      _lblEmailAlert(nullptr),
+      _lblMsgAlert(nullptr),
+      _cardSystem(nullptr),
+      _lblSysTitle(nullptr),
+      _lblSysWifi(nullptr),
+      _lblSysHeap(nullptr),
+      _lblSysUptime(nullptr) {}
 
+static bool s_capturePending = false;
 static bool s_captureActive = false;
 static uint32_t s_capturePixelCount = 0;
 static uint8_t s_b64LineLen = 0;
@@ -45,9 +63,19 @@ void UIManager::dispFlushCallback(lv_disp_drv_t* disp, const lv_area_t* area, lv
         s_tft->pushColors((uint16_t*)&color_p->full, w * h, false);
         s_tft->endWrite();
 
+        if (s_capturePending && area->x1 == 0 && area->y1 == 0) {
+            s_capturePending = false;
+            s_captureActive = true;
+            s_capturePixelCount = 0;
+            Serial.println("\n===CAPTURE_PPM_B64_START===");
+            Serial.println("TILED");
+        }
+
         if (s_captureActive) {
+            Serial.printf("TILE:%d,%d,%d,%d\n", area->x1, area->y1, w, h);
             static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
             uint32_t totalPixels = w * h;
+            uint8_t lineLen = 0;
             for (uint32_t i = 0; i < totalPixels; i++) {
                 uint8_t b0 = ((uint8_t*)&color_p[i])[0];
                 uint8_t b1 = ((uint8_t*)&color_p[i])[1];
@@ -63,17 +91,17 @@ void UIManager::dispFlushCallback(lv_disp_drv_t* disp, const lv_area_t* area, lv
                 out[3] = b64[b & 0x3F];
 
                 Serial.write((const uint8_t*)out, 4);
-                s_b64LineLen += 4;
-                if (s_b64LineLen >= 64) {
+                lineLen += 4;
+                if (lineLen >= 64) {
                     Serial.println();
-                    s_b64LineLen = 0;
+                    lineLen = 0;
                 }
-
-                s_capturePixelCount++;
             }
+            if (lineLen > 0) Serial.println();
+            Serial.println("END_TILE");
 
+            s_capturePixelCount += totalPixels;
             if (s_capturePixelCount >= 320 * 240) {
-                if (s_b64LineLen > 0) Serial.println();
                 Serial.println("===CAPTURE_PPM_B64_END===");
                 s_captureActive = false;
             }
@@ -83,13 +111,8 @@ void UIManager::dispFlushCallback(lv_disp_drv_t* disp, const lv_area_t* area, lv
 }
 
 void UIManager::requestCapture() {
-    s_captureActive = true;
-    s_capturePixelCount = 0;
-    s_b64LineLen = 0;
-    Serial.println("\n===CAPTURE_PPM_B64_START===");
-    Serial.println("P6");
-    Serial.printf("%d %d\n", 320, 240);
-    Serial.println("255");
+    s_capturePending = true;
+    s_captureActive = false;
     lv_obj_invalidate(lv_scr_act());
 }
 
@@ -348,6 +371,88 @@ void UIManager::buildDashboard() {
     lv_obj_set_style_text_font(_lblDay2HighLow, &lv_font_montserrat_12, 0);
     lv_obj_set_pos(_lblDay2HighLow, 68, 74);
 
+    // 4. Calendar & Agenda Card
+    _cardCalendar = lv_obj_create(_scr);
+    lv_obj_set_pos(_cardCalendar, 8, 120);
+    lv_obj_set_size(_cardCalendar, 148, 112);
+    lv_obj_clear_flag(_cardCalendar, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(_cardCalendar, 16, 0);
+    lv_obj_set_style_border_width(_cardCalendar, 1, 0);
+    lv_obj_set_style_pad_all(_cardCalendar, 6, 0);
+
+    _lblCalendarTitle = lv_label_create(_cardCalendar);
+    lv_label_set_text(_lblCalendarTitle, "Upcoming Agenda");
+    lv_obj_set_style_text_font(_lblCalendarTitle, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblCalendarTitle, 4, 4);
+
+    _lblEvent1Title = lv_label_create(_cardCalendar);
+    lv_label_set_text(_lblEvent1Title, "Team Standup");
+    lv_obj_set_style_text_font(_lblEvent1Title, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblEvent1Title, 4, 26);
+
+    _lblEvent1Time = lv_label_create(_cardCalendar);
+    lv_label_set_text(_lblEvent1Time, "in 25 mins - Zoom");
+    lv_obj_set_style_text_font(_lblEvent1Time, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblEvent1Time, 4, 46);
+
+    _lblEvent2Title = lv_label_create(_cardCalendar);
+    lv_label_set_text(_lblEvent2Title, "Design Sync");
+    lv_obj_set_style_text_font(_lblEvent2Title, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblEvent2Title, 4, 74);
+
+    // 5. Notifications Card
+    _cardNotifications = lv_obj_create(_scr);
+    lv_obj_set_pos(_cardNotifications, 164, 120);
+    lv_obj_set_size(_cardNotifications, 148, 112);
+    lv_obj_clear_flag(_cardNotifications, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(_cardNotifications, 16, 0);
+    lv_obj_set_style_border_width(_cardNotifications, 1, 0);
+    lv_obj_set_style_pad_all(_cardNotifications, 6, 0);
+
+    _lblNotifTitle = lv_label_create(_cardNotifications);
+    lv_label_set_text(_lblNotifTitle, "Alerts");
+    lv_obj_set_style_text_font(_lblNotifTitle, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblNotifTitle, 4, 4);
+
+    _lblEmailAlert = lv_label_create(_cardNotifications);
+    lv_label_set_text(_lblEmailAlert, "3 Unread Emails");
+    lv_obj_set_style_text_font(_lblEmailAlert, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblEmailAlert, 4, 32);
+
+    _lblMsgAlert = lv_label_create(_cardNotifications);
+    lv_label_set_text(_lblMsgAlert, "Slack: 2 Mentions");
+    lv_obj_set_style_text_font(_lblMsgAlert, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblMsgAlert, 4, 64);
+
+    // 6. System Diagnostics Card
+    _cardSystem = lv_obj_create(_scr);
+    lv_obj_set_pos(_cardSystem, 164, 120);
+    lv_obj_set_size(_cardSystem, 148, 112);
+    lv_obj_clear_flag(_cardSystem, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(_cardSystem, 16, 0);
+    lv_obj_set_style_border_width(_cardSystem, 1, 0);
+    lv_obj_set_style_pad_all(_cardSystem, 6, 0);
+
+    _lblSysTitle = lv_label_create(_cardSystem);
+    lv_label_set_text(_lblSysTitle, "Telemetry");
+    lv_obj_set_style_text_font(_lblSysTitle, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblSysTitle, 4, 4);
+
+    _lblSysWifi = lv_label_create(_cardSystem);
+    lv_label_set_text(_lblSysWifi, "WiFi: Connected");
+    lv_obj_set_style_text_font(_lblSysWifi, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblSysWifi, 4, 28);
+
+    _lblSysHeap = lv_label_create(_cardSystem);
+    lv_label_set_text(_lblSysHeap, "RAM: 220 KB free");
+    lv_obj_set_style_text_font(_lblSysHeap, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblSysHeap, 4, 52);
+
+    _lblSysUptime = lv_label_create(_cardSystem);
+    lv_label_set_text(_lblSysUptime, "Up: Active");
+    lv_obj_set_style_text_font(_lblSysUptime, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblSysUptime, 4, 76);
+
     // Link card widgets to modular CardRegistry
     ClockCard* clockCard = (ClockCard*)CardRegistry::getInstance().getCard("clock");
     if (clockCard) clockCard->setContainer(_cardClock);
@@ -358,7 +463,16 @@ void UIManager::buildDashboard() {
     ForecastCard* forecastCard = (ForecastCard*)CardRegistry::getInstance().getCard("forecast");
     if (forecastCard) forecastCard->setContainer(_cardForecast);
 
-    CardRegistry::getInstance().updateVisibilityAll();
+    CalendarCard* calendarCard = (CalendarCard*)CardRegistry::getInstance().getCard("calendar");
+    if (calendarCard) calendarCard->setContainer(_cardCalendar);
+
+    NotificationCard* notifCard = (NotificationCard*)CardRegistry::getInstance().getCard("notifications");
+    if (notifCard) notifCard->setContainer(_cardNotifications);
+
+    SystemCard* sysCard = (SystemCard*)CardRegistry::getInstance().getCard("system");
+    if (sysCard) sysCard->setContainer(_cardSystem);
+
+    refreshCards();
 }
 
 static lv_color_t hexToLvColor(const char* hex) {
@@ -398,11 +512,13 @@ void UIManager::applyThemeStyles(DisplayMode mode) {
     lv_obj_set_style_bg_opa(_scr, LV_OPA_COVER, 0);
 
     // Apply Cards
-    lv_obj_t* cards[] = {_cardClock, _cardWeather, _cardForecast};
+    lv_obj_t* cards[] = {_cardClock, _cardWeather, _cardForecast, _cardCalendar, _cardNotifications, _cardSystem};
     for (lv_obj_t* card : cards) {
-        lv_obj_set_style_bg_color(card, colorCard, 0);
-        lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
-        lv_obj_set_style_border_color(card, colorBorder, 0);
+        if (card) {
+            lv_obj_set_style_bg_color(card, colorCard, 0);
+            lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
+            lv_obj_set_style_border_color(card, colorBorder, 0);
+        }
     }
 
     // Apply Hero Clock text & AM/PM chip
@@ -426,6 +542,23 @@ void UIManager::applyThemeStyles(DisplayMode mode) {
     lv_obj_set_style_text_color(_lblDay1HighLow, colorMuted, 0);
     lv_obj_set_style_text_color(_lblDay2Name, colorText, 0);
     lv_obj_set_style_text_color(_lblDay2HighLow, colorMuted, 0);
+
+    // Apply Calendar Card elements
+    if (_lblCalendarTitle) lv_obj_set_style_text_color(_lblCalendarTitle, colorAccent, 0);
+    if (_lblEvent1Title)   lv_obj_set_style_text_color(_lblEvent1Title, colorText, 0);
+    if (_lblEvent1Time)    lv_obj_set_style_text_color(_lblEvent1Time, colorMuted, 0);
+    if (_lblEvent2Title)   lv_obj_set_style_text_color(_lblEvent2Title, colorText, 0);
+
+    // Apply Notifications Card elements
+    if (_lblNotifTitle) lv_obj_set_style_text_color(_lblNotifTitle, colorAccent, 0);
+    if (_lblEmailAlert) lv_obj_set_style_text_color(_lblEmailAlert, colorText, 0);
+    if (_lblMsgAlert)   lv_obj_set_style_text_color(_lblMsgAlert, colorMuted, 0);
+
+    // Apply System Card elements
+    if (_lblSysTitle)  lv_obj_set_style_text_color(_lblSysTitle, colorAccent, 0);
+    if (_lblSysWifi)   lv_obj_set_style_text_color(_lblSysWifi, colorText, 0);
+    if (_lblSysHeap)   lv_obj_set_style_text_color(_lblSysHeap, colorMuted, 0);
+    if (_lblSysUptime) lv_obj_set_style_text_color(_lblSysUptime, colorMuted, 0);
 }
 
 void UIManager::setTheme(DisplayMode mode) {
@@ -438,8 +571,59 @@ void UIManager::reloadConfig() {
 }
 
 void UIManager::refreshCards() {
-    CardRegistry::getInstance().updateVisibilityAll();
+    // 1. Clock card is always top
+    ClockCard* clockCard = (ClockCard*)CardRegistry::getInstance().getCard("clock");
+    if (clockCard && clockCard->getContainer()) {
+        if (clockCard->isEnabled()) {
+            lv_obj_clear_flag(clockCard->getContainer(), LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(clockCard->getContainer(), LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    // 2. Hide all secondary cards initially
+    const auto& allCards = CardRegistry::getInstance().getCards();
+    for (Card* c : allCards) {
+        if (strcmp(c->getId(), "clock") != 0 && c->getContainer()) {
+            lv_obj_add_flag(c->getContainer(), LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    // 3. Collect enabled secondary cards in order
+    std::vector<Card*> enabledSecondary;
+    for (Card* c : allCards) {
+        if (strcmp(c->getId(), "clock") != 0 && c->isEnabled() && c->getContainer()) {
+            enabledSecondary.push_back(c);
+        }
+    }
+
+    // 4. Dynamically assign to bottom slots
+    if (enabledSecondary.size() == 1) {
+        // Single card takes full bottom width: (8, 120, 304, 112)
+        lv_obj_t* cont = enabledSecondary[0]->getContainer();
+        lv_obj_set_pos(cont, 8, 120);
+        lv_obj_set_size(cont, 304, 112);
+        lv_obj_clear_flag(cont, LV_OBJ_FLAG_HIDDEN);
+    } else if (enabledSecondary.size() >= 2) {
+        // Left Slot: (8, 120, 148, 112)
+        lv_obj_t* leftCont = enabledSecondary[0]->getContainer();
+        lv_obj_set_pos(leftCont, 8, 120);
+        lv_obj_set_size(leftCont, 148, 112);
+        lv_obj_clear_flag(leftCont, LV_OBJ_FLAG_HIDDEN);
+
+        // Right Slot: (164, 120, 148, 112)
+        lv_obj_t* rightCont = enabledSecondary[1]->getContainer();
+        lv_obj_set_pos(rightCont, 164, 120);
+        lv_obj_set_size(rightCont, 148, 112);
+        lv_obj_clear_flag(rightCont, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // Redraw entire screen cleanly
+    if (lv_scr_act()) {
+        lv_obj_invalidate(lv_scr_act());
+    }
 }
+
 
 
 void UIManager::updateTime(const char* timeStr, const char* ampmStr, const char* dateStr) {
@@ -505,3 +689,11 @@ void UIManager::updateWeather(const WeatherData& data, bool isFahrenheit, int to
         renderWeatherIcon(_iconWeather, 0, _currentMode == DisplayMode::NIGHT);
     }
 }
+
+void UIManager::updateCalendar(const char* title, const char* ev1Title, const char* ev1Time, const char* ev2Title) {
+    if (_lblCalendarTitle && title) lv_label_set_text(_lblCalendarTitle, title);
+    if (_lblEvent1Title && ev1Title) lv_label_set_text(_lblEvent1Title, ev1Title);
+    if (_lblEvent1Time && ev1Time) lv_label_set_text(_lblEvent1Time, ev1Time);
+    if (_lblEvent2Title && ev2Title) lv_label_set_text(_lblEvent2Title, ev2Title);
+}
+

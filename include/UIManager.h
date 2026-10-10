@@ -19,6 +19,7 @@ public:
     // Reactive data update APIs
     void updateTime(const char* timeStr, const char* ampmStr, const char* dateStr);
     void updateWeather(const WeatherData& data, bool isFahrenheit, int todayWeekday);
+    void updateCalendar(const char* title, const char* ev1Title, const char* ev1Time, const char* ev2Title);
     void updateNetwork(const char* ssid, const char* ip, int8_t rssi, bool connected, const char* syncState) {}
     void setTheme(DisplayMode mode);
     void reloadConfig();
@@ -72,6 +73,26 @@ private:
     lv_obj_t* _lblDay2Name;
     lv_obj_t* _iconDay2;
     lv_obj_t* _lblDay2HighLow;
+
+    // 4. Calendar Card
+    lv_obj_t* _cardCalendar;
+    lv_obj_t* _lblCalendarTitle;
+    lv_obj_t* _lblEvent1Title;
+    lv_obj_t* _lblEvent1Time;
+    lv_obj_t* _lblEvent2Title;
+
+    // 5. Notifications Card
+    lv_obj_t* _cardNotifications;
+    lv_obj_t* _lblNotifTitle;
+    lv_obj_t* _lblEmailAlert;
+    lv_obj_t* _lblMsgAlert;
+
+    // 6. System Diagnostics Card
+    lv_obj_t* _cardSystem;
+    lv_obj_t* _lblSysTitle;
+    lv_obj_t* _lblSysWifi;
+    lv_obj_t* _lblSysHeap;
+    lv_obj_t* _lblSysUptime;
 
     // Theme Styles
     lv_style_t _styleScr;

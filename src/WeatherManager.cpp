@@ -32,7 +32,7 @@ bool WeatherManager::update(bool isWiFiConnected) {
     }
 
     unsigned long now = millis();
-    unsigned long interval = _data.isValid ? _updateIntervalMs : WEATHER_RETRY_INTERVAL_MS;
+    unsigned long interval = _data.isValid ? _updateIntervalMs : (10 * 1000UL);
 
     if (_forceUpdateRequested || (now - _lastAttemptTime >= interval) || (_lastAttemptTime == 0)) {
         _forceUpdateRequested = false;

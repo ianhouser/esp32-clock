@@ -23,6 +23,7 @@ public:
     void applyTheme(const ThemeColors& theme) override;
     void setVisible(bool visible) override;
     lv_obj_t* getContainer() const override { return _container; }
+    void setContainer(lv_obj_t* container) { _container = container; }
 
     bool showBadges() const { return _showBadges; }
     int getTimeoutSec() const { return _timeoutSec; }

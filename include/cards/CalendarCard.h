@@ -23,9 +23,11 @@ public:
     void applyTheme(const ThemeColors& theme) override;
     void setVisible(bool visible) override;
     lv_obj_t* getContainer() const override { return _container; }
+    void setContainer(lv_obj_t* container) { _container = container; }
 
     int getMaxEvents() const { return _maxEvents; }
     bool showCountdown() const { return _showCountdown; }
+    const String& getCalendarUrl() const { return _calendarUrl; }
 
 private:
     bool _enabled;

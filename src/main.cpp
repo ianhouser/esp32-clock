@@ -15,6 +15,7 @@
 #include "cards/CalendarCard.h"
 #include "cards/NotificationCard.h"
 #include "cards/SystemCard.h"
+#include "CalendarManager.h"
 
 // Secure credentials fallback if secrets.h is not yet created
 #if __has_include("secrets.h")
@@ -43,6 +44,7 @@ TFT_eSPI tft = TFT_eSPI();
 TimeManager timeManager;
 DisplayManager displayManager;
 WeatherManager weatherManager;
+CalendarManager calendarManager;
 UIManager uiManager;
 
 static ClockCard s_clockCard;
@@ -51,6 +53,25 @@ static ForecastCard s_forecastCard;
 static CalendarCard s_calendarCard;
 static NotificationCard s_notificationCard;
 static SystemCard s_systemCard;
+static volatile bool s_configReloadPending = false;
+
+void applyServicesConfig() {
+    WeatherCard* wc = (WeatherCard*)CardRegistry::getInstance().getCard("weather");
+    if (wc) {
+        Serial.printf("[main] Configuring Weather: Lat: %.4f, Lon: %.4f, Fahr: %d, poll: %d min\n",
+                      wc->getLat(), wc->getLon(), wc->isFahrenheit(), wc->getUpdateIntervalMin());
+        weatherManager.begin(wc->getLat(), wc->getLon(), wc->isFahrenheit(), wc->getUpdateIntervalMin() * 60000UL);
+        weatherManager.forceUpdate();
+    }
+
+    CalendarCard* cc = (CalendarCard*)CardRegistry::getInstance().getCard("calendar");
+    if (cc && cc->getCalendarUrl().length() > 0) {
+        Serial.printf("[main] Configuring Calendar: URL: %s, Max: %d\n",
+                      cc->getCalendarUrl().c_str(), cc->getMaxEvents());
+        calendarManager.begin(cc->getCalendarUrl(), cc->getMaxEvents());
+        calendarManager.forceUpdate();
+    }
+}
 
 void setup() {
     Serial.begin(115200);
@@ -98,7 +119,7 @@ void setup() {
     // Hook dynamic config change listener
     ConfigManager::getInstance().onConfigChanged([]() {
         Serial.println("[main] Configuration updated dynamically!");
-        uiManager.reloadConfig();
+        s_configReloadPending = true;
         const auto& t = ConfigManager::getInstance().getThemeConfig();
         displayManager.setSchedule(t.nightStartHour, t.nightStartMin, t.nightEndHour, t.nightEndMin);
     });
@@ -106,8 +127,8 @@ void setup() {
     // Initialize LVGL UI Manager
     uiManager.begin(&tft);
 
-    // Initialize Weather Manager with coordinates & units
-    weatherManager.begin(WEATHER_LAT, WEATHER_LON, WEATHER_USE_FAHR);
+    // Apply configured services (Weather coordinates & Calendar iCal)
+    applyServicesConfig();
 
     // Start WiFi & SNTP synchronization
     timeManager.begin(WIFI_SSID, WIFI_PASSWORD, TIMEZONE_TZ, NTP_SERVER_1, NTP_SERVER_2, NTP_SERVER_3);
@@ -116,6 +137,13 @@ void setup() {
 void loop() {
     // Process WiFi & SNTP state machine
     timeManager.update();
+
+    // Safely apply pending configuration reloads on the UI thread
+    if (s_configReloadPending) {
+        s_configReloadPending = false;
+        uiManager.reloadConfig();
+        applyServicesConfig();
+    }
 
     // Start Web Server once WiFi connects
     static bool s_webServerStarted = false;
@@ -132,6 +160,26 @@ void loop() {
         uiManager.updateWeather(weatherManager.getData(),
                                 weatherManager.isUsingFahrenheit(),
                                 currentWday);
+    }
+
+    // Poll Google Calendar iCal stream when online (non-blocking streaming)
+    char currentDateYmd[16] = {0};
+    struct tm curTimeCal;
+    if (timeManager.getLocalTime(curTimeCal)) {
+        snprintf(currentDateYmd, sizeof(currentDateYmd), "%04d%02d%02d",
+                 curTimeCal.tm_year + 1900, curTimeCal.tm_mon + 1, curTimeCal.tm_mday);
+    }
+    bool newCalendarData = calendarManager.update(timeManager.isConnected(),
+                                                  currentDateYmd[0] ? currentDateYmd : nullptr);
+    if (newCalendarData) {
+        const auto& events = calendarManager.getEvents();
+        if (events.empty()) {
+            uiManager.updateCalendar("Upcoming Agenda", "No Upcoming Events", calendarManager.getStatusText().c_str(), "");
+        } else if (events.size() == 1) {
+            uiManager.updateCalendar("Upcoming Agenda", events[0].summary.c_str(), events[0].timeStr.c_str(), "");
+        } else {
+            uiManager.updateCalendar("Upcoming Agenda", events[0].summary.c_str(), events[0].timeStr.c_str(), events[1].summary.c_str());
+        }
     }
 
     // Process Serial Commands (theme toggle, screen capture)
