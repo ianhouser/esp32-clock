@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Clock — Control Panel</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="brand-info">
+          <h1>ESP32 Clock Control</h1>
+          <div class="device-status">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Connecting...</span>
+            <span class="device-ip" id="deviceIp">--</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btnRestart" class="btn btn-secondary" title="Reboot device">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          Reboot
+        </button>
+        <button id="btnSave" class="btn btn-primary" title="Save changes to flash">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save & Apply
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="dashboard-grid">
+      <!-- Left Column: Live Screen Simulator -->
+      <section class="preview-panel glass-card">
+        <div class="panel-header">
+          <h2>Live Screen Preview</h2>
+          <div class="preview-controls">
+            <span class="badge" id="previewModeBadge">320×240 IPS</span>
+            <button id="btnToggleSimMode" class="btn-sm btn-subtle" title="Toggle Day / Night preview">
+              ☀️ Day
+            </button>
+          </div>
+        </div>
+        <div class="screen-bezel-wrapper">
+          <div class="screen-bezel">
+            <canvas id="displayPreview" width="320" height="240"></canvas>
+          </div>
+        </div>
+        <div class="preview-footer">
+          <span class="caption">Real-time simulation of ST7789 display</span>
+          <button id="btnSimulateTime" class="btn-link">Update Preview</button>
+        </div>
+      </section>
+
+      <!-- Right Column: Settings Tabs -->
+      <section class="controls-panel glass-card">
+        <nav class="tabs-nav" role="tablist">
+          <button class="tab-btn active" data-tab="cards" id="tabCards">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Cards & Modules
+          </button>
+          <button class="tab-btn" data-tab="theme" id="tabTheme">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 0 0 0 14v6"/></svg>
+            Theme & Colors
+          </button>
+          <button class="tab-btn" data-tab="system" id="tabSystem">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            System & Network
+          </button>
+        </nav>
+
+        <!-- Tab 1: Modular Cards & Layout -->
+        <div class="tab-pane active" id="paneCards">
+          <div class="pane-header">
+            <h3>Display Cards Management</h3>
+            <p class="subtitle">Enable, reorder, and configure individual dashboard cards. Future modules register here automatically.</p>
+          </div>
+          <div class="cards-list" id="cardsList">
+            <!-- Dynamically populated by app.js -->
+            <div class="loading-spinner">Loading cards configuration...</div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Theme & Colors Studio -->
+        <div class="tab-pane" id="paneTheme">
+          <div class="pane-header">
+            <h3>Visual Design & Themes</h3>
+            <p class="subtitle">Select handcrafted palettes or dial in custom hex colors.</p>
+          </div>
+
+          <!-- Presets -->
+          <div class="settings-group">
+            <label class="group-label">Color Presets</label>
+            <div class="presets-grid" id="presetsGrid">
+              <button class="preset-pill" data-preset="cyberpunk">
+                <span class="swatch" style="background: linear-gradient(135deg, #00FFFF, #081018);"></span>
+                Cyberpunk Cyan
+              </button>
+              <button class="preset-pill" data-preset="nord">
+                <span class="swatch" style="background: linear-gradient(135deg, #88C0D0, #2E3440);"></span>
+                Nord Frost
+              </button>
+              <button class="preset-pill" data-preset="solar">
+                <span class="swatch" style="background: linear-gradient(135deg, #FFB300, #1A1100);"></span>
+                Solar Amber
+              </button>
+              <button class="preset-pill" data-preset="emerald">
+                <span class="swatch" style="background: linear-gradient(135deg, #00FF66, #021408);"></span>
+                Matrix Emerald
+              </button>
+              <button class="preset-pill" data-preset="oled">
+                <span class="swatch" style="background: linear-gradient(135deg, #FFFFFF, #000000);"></span>
+                OLED Minimal
+              </button>
+              <button class="preset-pill" data-preset="violet">
+                <span class="swatch" style="background: linear-gradient(135deg, #A855F7, #0F0B1E);"></span>
+                Deep Violet
+              </button>
+            </div>
+          </div>
+
+          <!-- Custom Color Pickers -->
+          <div class="settings-group">
+            <label class="group-label">Custom Palette Colors</label>
+            <div class="color-pickers-grid">
+              <div class="color-picker-item">
+                <label for="colorAccent">Accent Highlight</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="colorAccent" value="#00FFFF">
+                  <input type="text" id="colorAccentHex" class="hex-input" value="#00FFFF">
+                </div>
+              </div>
+              <div class="color-picker-item">
+                <label for="colorBg">Screen Background</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="colorBg" value="#081018">
+                  <input type="text" id="colorBgHex" class="hex-input" value="#081018">
+                </div>
+              </div>
+              <div class="color-picker-item">
+                <label for="colorCardBg">Card Surface</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="colorCardBg" value="#101C28">
+                  <input type="text" id="colorCardBgHex" class="hex-input" value="#101C28">
+                </div>
+              </div>
+              <div class="color-picker-item">
+                <label for="colorBorder">Card Border</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="colorBorder" value="#203850">
+                  <input type="text" id="colorBorderHex" class="hex-input" value="#203850">
+                </div>
+              </div>
+              <div class="color-picker-item">
+                <label for="colorText">Date / Primary Text</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="colorText" value="#FFFFFF">
+                  <input type="text" id="colorTextHex" class="hex-input" value="#FFFFFF">
+                </div>
+              </div>
+              <div class="color-picker-item">
+                <label for="colorMuted">Muted / Subtitle Text</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="colorMuted" value="#8CA0B8">
+                  <input type="text" id="colorMutedHex" class="hex-input" value="#8CA0B8">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Night Mode & Brightness Schedule -->
+          <div class="settings-group">
+            <label class="group-label">Night Mode & Brightness Schedule</label>
+            <div class="schedule-grid">
+              <div class="form-row">
+                <label for="nightStart">Night Mode Starts</label>
+                <input type="time" id="nightStart" value="22:00" class="input-field">
+              </div>
+              <div class="form-row">
+                <label for="nightEnd">Night Mode Ends</label>
+                <input type="time" id="nightEnd" value="07:00" class="input-field">
+              </div>
+              <div class="form-row">
+                <label for="dayBrightness">Day Brightness (<span id="dayBrightVal">100</span>%)</label>
+                <input type="range" id="dayBrightness" min="10" max="255" value="255" class="range-slider">
+              </div>
+              <div class="form-row">
+                <label for="nightBrightness">Night Brightness (<span id="nightBrightVal">15</span>%)</label>
+                <input type="range" id="nightBrightness" min="0" max="100" value="38" class="range-slider">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: System & Network -->
+        <div class="tab-pane" id="paneSystem">
+          <div class="pane-header">
+            <h3>System & Network</h3>
+            <p class="subtitle">Device identity, time synchronization, and hardware telemetry.</p>
+          </div>
+
+          <div class="settings-group">
+            <label class="group-label">Device Identity</label>
+            <div class="form-grid">
+              <div class="form-row">
+                <label for="mdnsHostname">mDNS Hostname</label>
+                <div class="input-affix">
+                  <input type="text" id="mdnsHostname" value="esp32-clock" class="input-field">
+                  <span class="affix">.local</span>
+                </div>
+              </div>
+              <div class="form-row">
+                <label for="ntpServer">NTP Server</label>
+                <input type="text" id="ntpServer" value="pool.ntp.org" class="input-field">
+              </div>
+              <div class="form-row full-width">
+                <label for="timezone">POSIX Timezone String</label>
+                <input type="text" id="timezone" value="PST8PDT,M3.2.0,M11.1.0" class="input-field font-mono">
+                <span class="hint">E.g., PST8PDT (US Pacific), EST5EDT (US Eastern), CET-1CEST (Europe)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <label class="group-label">Hardware Diagnostics</label>
+            <div class="telemetry-table" id="telemetryTable">
+              <div class="telemetry-item">
+                <span class="key">Free Internal SRAM</span>
+                <span class="val font-mono" id="diagFreeHeap">-- KB</span>
+              </div>
+              <div class="telemetry-item">
+                <span class="key">Total Heap Size</span>
+                <span class="val font-mono" id="diagTotalHeap">-- KB</span>
+              </div>
+              <div class="telemetry-item">
+                <span class="key">WiFi RSSI</span>
+                <span class="val font-mono" id="diagRssi">-- dBm</span>
+              </div>
+              <div class="telemetry-item">
+                <span class="key">Device Uptime</span>
+                <span class="val font-mono" id="diagUptime">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Floating Toast Notification -->
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

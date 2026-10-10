@@ -1,46 +1,46 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-09 15:50 PDT — Antigravity (Hardware subpixel mapping locked to MADCTL 0x68, POSIX TZ applied, day palette verified on device)
+**Last updated:** 2026-10-10 11:38 PDT — Antigravity (Implemented multi-calendar source aggregation, colored dot category indicators, and Web UI feed manager)
 
 ## Current Focus
 
-- **Milestone:** [v0.1-mvp](https://github.com/ianhouser/esp32-clock/milestone/1)
-- **Task:** Task 5: LVGL Modern Digital Dashboard (Issue #9)
-- **Blockers:** Awaiting human user PR review and merge
+- **Milestone:** [v0.2-web-control](https://github.com/ianhouser/esp32-clock/milestone/2)
+- **Task:** Issue #11: Modular Web Control Panel & Customization Dashboard (PR #12)
+- **Branch:** `feat/11-web-control-panel`
+- **Blockers:** None
 
 ## Last Three Decisions
 
-1. Resolved hardware color inversion: Enforced ST7789 MADCTL register `0x68` (MX | MV | BGR subpixel ordering) on boot in `setup()`, aligning physical GMT020-02-7P display subpixels with LVGL RGB565 buffer — 2026-10-09
-2. Fixed automatic Night mode false-trigger: Added explicit `setenv("TZ", _tz, 1); tzset();` in `TimeManager` so local hour evaluates in PDT (`15:xx`) instead of UTC (`22:xx`), preventing daytime transition to night mode — 2026-10-09
-3. Overhauled dashboard layout: Removed top header bar, added 12-hour hero time card with AM/PM pill, and replaced system/net pane with a 2-day Open-Meteo weather forecast card — 2026-10-09
+1. Built multi-calendar source aggregation (`include/CalendarManager.h`, `src/CalendarManager.cpp`, `include/cards/CalendarCard.h`): supports multiple independent iCal feeds (e.g., Personal, Family) with individual names, URLs, and hex colors, merging events chronologically — 2026-10-10
+2. Added dedicated 6×6 circular category dot indicators (`●`) on LVGL display (`UIManager.cpp`): dynamically colored per event source, hiding when no events are scheduled — 2026-10-10
+3. Implemented interactive Multi-Feed Manager in Web Control Panel (`data/app.js`, `data/style.css`): dynamic add/remove feed cards, custom color picker swatches, and backward-compatible serialization — 2026-10-10
 
 ## What Just Happened
 
-- Removed top header bar to maximize canvas space for time and weather
-- Redesigned hero clock card: 12-hour format (`3:47:22`), AM/PM pill badge, centered full date
-- Replaced system/net card with Open-Meteo 2-day forecast card (tomorrow & day after with day names, vector weather icons, High/Low temps)
-- Updated `TimeManager.cpp` with explicit `setenv("TZ")` and `tzset()` calls
-- Configured `.clangd` to strip RISC-V specific GCC flags and eliminate IDE diagnostics on macOS
-- Enforced ST7789 MADCTL register `0x68` in `main.cpp` and verified correct Day colors (Dark Slate + Cyan + Golden Yellow Sun) on physical hardware
-- Committed and pushed updates to `feat/#9-lvgl-modern-dashboard` on [PR #10](https://github.com/ianhouser/esp32-clock/pull/10)
+- Added `CalendarSource` data model to `CalendarCard` and `CalendarManager`
+- Implemented sequential multi-feed streaming with cooperative UI yielding (`yieldUI()`) to ensure no heap spikes or UI stutter
+- Implemented chronological event sorting (`rawStart` comparator) across aggregated calendar sources
+- Built LVGL 6×6 colored dot widgets (`_dotEvent1`, `_dotEvent2`) positioned next to event titles
+- Created multi-source editor in Web Control Panel with color pickers and feed cards
+- Flashed LittleFS filesystem and firmware binary to physical ESP32
+- Verified over serial framebuffer capture and web `/api/config`
+- Pushed updates to `feat/11-web-control-panel`
 
-## Next Up (Human User Action)
+## Next Up
 
-1. Verify physical display on desk
-2. Human user reviews and merges [PR #10](https://github.com/ianhouser/esp32-clock/pull/10) into `main`
+1. Add unit/integration tests for `CalendarManager` line parser edge cases
+2. Conduct final PR self-review on PR #12 and hand off to user for merge approval
 
 ## Open Risks / Watch List
 
-- LVGL partial double-buffering (320×20) leaves ample headroom (>227 KB RAM free), but watch heap if adding complex full-screen images
-- 7-pin GMT020-02-7P TFT module connects backlight directly to VCC; Day/Night theme switching uses LVGL styles
+- Ensure `LittleFS` is flashed via `pio run -t uploadfs` whenever web assets in `data/` are modified
+- Monitor heap during simultaneous web browsing and LVGL rendering (currently ~225 KB free SRAM)
 
 ## Pointers
 
 - **INDEX:** `docs/INDEX.md`
-- **UI Concepts:** `docs/ui-design-concepts.md`
-- **Issue:** https://github.com/ianhouser/esp32-clock/issues/9
-- **PR:** https://github.com/ianhouser/esp32-clock/pull/10
-- **Plan:** `docs/plans/2026-10-09-issue-9-lvgl-modern-dashboard.md`
+- **Issue:** https://github.com/ianhouser/esp32-clock/issues/11
+- **PR:** https://github.com/ianhouser/esp32-clock/pull/12
+- **Plan:** `docs/plans/2026-10-09-issue-11-modular-web-control-panel.md`
+- **Control Panel Assets:** `data/index.html`, `data/style.css`, `data/app.js`
 - **Hardware wiring:** `docs/hardware-guide.md`
-
-

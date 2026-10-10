@@ -32,7 +32,7 @@ bool WeatherManager::update(bool isWiFiConnected) {
     }
 
     unsigned long now = millis();
-    unsigned long interval = _data.isValid ? _updateIntervalMs : WEATHER_RETRY_INTERVAL_MS;
+    unsigned long interval = _data.isValid ? _updateIntervalMs : (10 * 1000UL);
 
     if (_forceUpdateRequested || (now - _lastAttemptTime >= interval) || (_lastAttemptTime == 0)) {
         _forceUpdateRequested = false;
@@ -49,7 +49,7 @@ bool WeatherManager::fetchWeather() {
 
     char url[320];
     snprintf(url, sizeof(url),
-             "http://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=3%s",
+             "http://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=3%s&timezone=auto",
              _latitude, _longitude, _useFahrenheit ? "&temperature_unit=fahrenheit" : "");
 
     Serial.printf("[WeatherManager] Querying Open-Meteo: %s\n", url);
