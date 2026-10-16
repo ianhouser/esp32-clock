@@ -29,6 +29,8 @@ void NetworkTaskCoordinator::registerTask(const String& name,
             task.bootDelayMs = bootDelayMs;
             task.priority = priority;
             task.execute = execute;
+            task.forcePending = true;
+            Serial.printf("[TaskCoordinator] Updated task '%s' (immediate execution pending)\n", name.c_str());
             return;
         }
     }

@@ -27,11 +27,11 @@
         </div>
       </div>
       <div class="header-actions">
-        <button id="btnRestart" class="btn btn-secondary" title="Reboot device">
+        <button id="btnRestart" type="button" class="btn btn-secondary" title="Reboot device">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
           Reboot
         </button>
-        <button id="btnSave" class="btn btn-primary" title="Save changes to flash">
+        <button id="btnSave" type="button" class="btn btn-primary" title="Save changes to flash">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           Save & Apply
         </button>
@@ -258,6 +258,24 @@
 
     <!-- Floating Toast Notification -->
     <div id="toast" class="toast"></div>
+
+    <!-- Confirm Reboot Modal -->
+    <div id="rebootModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Confirm Device Reboot</h3>
+          <button type="button" class="btn-icon" id="btnCloseRebootModal" title="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to reboot the ESP32 Clock?</p>
+          <p class="hint" style="margin-top: 8px;">The device will restart and reconnect to Wi-Fi in ~5 seconds.</p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="btnCancelReboot">Cancel</button>
+          <button type="button" class="btn btn-danger" id="btnConfirmReboot">Reboot Device</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

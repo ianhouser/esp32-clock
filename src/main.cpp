@@ -115,6 +115,10 @@ void applyServicesConfig() {
             }
         );
     }
+
+    // Trigger immediate execution for re-configured network tasks
+    NetworkTaskCoordinator::getInstance().requestRun("weather");
+    NetworkTaskCoordinator::getInstance().requestRun("calendar");
 }
 
 void setup() {

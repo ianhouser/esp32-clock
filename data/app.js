@@ -702,8 +702,18 @@ function setupEventListeners() {
   // Save & Apply
   document.getElementById('btnSave').addEventListener('click', saveConfig);
 
-  // Reboot Device
-  document.getElementById('btnRestart').addEventListener('click', restartDevice);
+  // Reboot Device Modal Hooks
+  const btnRestart = document.getElementById('btnRestart');
+  if (btnRestart) btnRestart.addEventListener('click', openRebootModal);
+
+  const btnCloseModal = document.getElementById('btnCloseRebootModal');
+  if (btnCloseModal) btnCloseModal.addEventListener('click', closeRebootModal);
+
+  const btnCancelModal = document.getElementById('btnCancelReboot');
+  if (btnCancelModal) btnCancelModal.addEventListener('click', closeRebootModal);
+
+  const btnConfirmReboot = document.getElementById('btnConfirmReboot');
+  if (btnConfirmReboot) btnConfirmReboot.addEventListener('click', confirmRestartDevice);
 }
 
 function bindColorInput(elemId, configKey) {
@@ -752,14 +762,26 @@ async function saveConfig() {
   }
 }
 
-// Reboot Device
-async function restartDevice() {
-  if (!confirm('Reboot the ESP32 Clock now?')) return;
+// Reboot Device Modal Flow
+function openRebootModal(e) {
+  if (e) e.preventDefault();
+  const modal = document.getElementById('rebootModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeRebootModal(e) {
+  if (e) e.preventDefault();
+  const modal = document.getElementById('rebootModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function confirmRestartDevice() {
+  closeRebootModal();
   showToast('Rebooting ESP32 Clock...');
   try {
     await fetch('/api/restart', { method: 'POST' });
   } catch (e) {}
-  setTimeout(() => location.reload(), 4000);
+  setTimeout(() => location.reload(), 4500);
 }
 
 // ==========================================
