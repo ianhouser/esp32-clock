@@ -51,6 +51,9 @@ public:
     // Force immediate weather fetch on next update() when WiFi is connected
     void forceUpdate();
 
+    // Execute weather fetch directly (used by NetworkTaskCoordinator)
+    bool executeFetch() { return fetchWeather(); }
+
     // Query weather telemetry
     const WeatherData& getData() const { return _data; }
     bool hasValidData() const { return _data.isValid; }

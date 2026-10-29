@@ -1,0 +1,119 @@
+{
+  "theme": {
+    "preset": "oled",
+    "accent_color": "#FFFFFF",
+    "bg_color": "#000000",
+    "card_bg_color": "#111111",
+    "card_border_color": "#2A2A2A",
+    "time_color": "#FFFFFF",
+    "date_color": "#FFFFFF",
+    "muted_text_color": "#888888",
+    "day_duty": 255,
+    "night_duty": 38,
+    "night_start_hour": 22,
+    "night_start_min": 0,
+    "night_end_hour": 7,
+    "night_end_min": 0
+  },
+  "cards": [
+    {
+      "id": "clock",
+      "title": "Clock & Date",
+      "description": "Anti-aliased digital time and calendar date",
+      "icon": "clock",
+      "enabled": true,
+      "order": 0,
+      "config": {
+        "format_12h": true,
+        "show_seconds": true,
+        "date_format": "MDY"
+      }
+    },
+    {
+      "id": "weather",
+      "title": "Current Weather",
+      "description": "Live temperature, sky conditions, and humidity",
+      "icon": "cloud-sun",
+      "enabled": true,
+      "order": 1,
+      "config": {
+        "city_name": "North Hills",
+        "lat": 34.2526,
+        "lon": -118.4967,
+        "use_fahrenheit": true,
+        "update_interval_min": 15
+      }
+    },
+    {
+      "id": "forecast",
+      "title": "2-Day Forecast",
+      "description": "Upcoming forecast and high/low temperatures",
+      "icon": "calendar-days",
+      "enabled": false,
+      "order": 2,
+      "config": {
+        "show_icons": true
+      }
+    },
+    {
+      "id": "calendar",
+      "title": "Calendar & Events",
+      "description": "Upcoming calendar events and agenda timeline",
+      "icon": "calendar",
+      "enabled": true,
+      "order": 3,
+      "config": {
+        "max_events": 3,
+        "show_countdown": true,
+        "calendar_url": "https://calendar.google.com/calendar/ical/ianhouser%40gmail.com/private-5fabc232bc99421bbe51426652fccce0/basic.ics",
+        "sources": [
+          {
+            "name": "Personal",
+            "url": "https://calendar.google.com/calendar/ical/ianhouser%40gmail.com/private-5fabc232bc99421bbe51426652fccce0/basic.ics",
+            "color": "#fdbe12"
+          },
+          {
+            "name": "Shared",
+            "url": "https://calendar.google.com/calendar/ical/co6466151982i1gc2qht6qcgtc%40group.calendar.google.com/private-2eae23e99b33f86d3b35ac13fa7de023/basic.ics",
+            "color": "#f50ae1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "notifications",
+      "title": "Email & Notifications",
+      "description": "Discord, phone, and cloud alerts via ntfy.sh",
+      "icon": "bell",
+      "enabled": false,
+      "order": 4,
+      "config": {
+        "ntfy_server": "https://ntfy.sh",
+        "ntfy_topic": "",
+        "poll_interval_sec": 10,
+        "show_badges": true,
+        "timeout_sec": 30,
+        "carousel_interval_sec": 15,
+        "skip_empty_agenda": true
+      }
+    },
+    {
+      "id": "system",
+      "title": "System & Network",
+      "description": "WiFi RSSI, IP address, uptime, and memory diagnostics",
+      "icon": "cpu",
+      "enabled": false,
+      "order": 5,
+      "config": {
+        "show_wifi_rssi": true,
+        "show_uptime": true,
+        "show_free_heap": true
+      }
+    }
+  ],
+  "system": {
+    "mdns_hostname": "esp32-clock",
+    "timezone": "PST8PDT,M3.2.0,M11.1.0",
+    "ntp_server": "pool.ntp.org"
+  }
+}
