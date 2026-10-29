@@ -3,6 +3,7 @@
 #include <LittleFS.h>
 #include "ConfigManager.h"
 #include "cards/CardRegistry.h"
+#include "NotificationManager.h"
 
 WebServerManager& WebServerManager::getInstance() {
     static WebServerManager instance;
@@ -105,6 +106,70 @@ void WebServerManager::setupRoutes() {
             vTaskDelay(pdMS_TO_TICKS(500));
             ESP.restart();
         }, "restart_task", 2048, NULL, 1, NULL);
+    });
+
+    // 6. POST /api/notify
+    AsyncCallbackJsonWebHandler *notifyPostHandler = new AsyncCallbackJsonWebHandler("/api/notify",
+        [](AsyncWebServerRequest *request, JsonVariant &json) {
+            if (!json.is<JsonObject>()) {
+                request->send(400, "application/json", "{\"error\":\"Invalid JSON payload\"}");
+                return;
+            }
+
+            JsonObject obj = json.as<JsonObject>();
+            String title = obj["title"] | "Notification";
+            String message = obj["message"] | "";
+            String source = obj["source"] | "local";
+            int timeoutSec = obj["timeout_sec"] | 30;
+            String id = obj["id"] | "";
+
+            NotificationManager::getInstance().addNotification(title, message, source, timeoutSec, id);
+
+            AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"status\":\"ok\"}");
+            response->addHeader("Access-Control-Allow-Origin", "*");
+            request->send(response);
+        });
+    _server.addHandler(notifyPostHandler);
+
+    // 7. POST /api/notify/clear
+    _server.on("/api/notify/clear", HTTP_POST, [](AsyncWebServerRequest *request) {
+        NotificationManager::getInstance().clearAll();
+        AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"status\":\"ok\",\"cleared\":true}");
+        response->addHeader("Access-Control-Allow-Origin", "*");
+        request->send(response);
+    });
+
+    // 8. GET /api/notifications
+    _server.on("/api/notifications", HTTP_GET, [](AsyncWebServerRequest *request) {
+        AsyncResponseStream *response = request->beginResponseStream("application/json");
+        response->addHeader("Access-Control-Allow-Origin", "*");
+
+        JsonDocument doc;
+        doc["unread_count"] = NotificationManager::getInstance().getUnreadCount();
+        doc["has_active_alert"] = NotificationManager::getInstance().hasActiveAlert();
+
+        const NotificationItem* active = NotificationManager::getInstance().getActiveAlert();
+        if (active) {
+            JsonObject actObj = doc["active_alert"].to<JsonObject>();
+            actObj["id"] = active->id;
+            actObj["source"] = active->source;
+            actObj["title"] = active->title;
+            actObj["message"] = active->message;
+            actObj["timeout_sec"] = active->timeoutSec;
+        }
+
+        JsonArray histArr = doc["history"].to<JsonArray>();
+        for (const auto& item : NotificationManager::getInstance().getHistory()) {
+            JsonObject h = histArr.add<JsonObject>();
+            h["id"] = item.id;
+            h["source"] = item.source;
+            h["title"] = item.title;
+            h["message"] = item.message;
+            h["timeout_sec"] = item.timeoutSec;
+        }
+
+        serializeJson(doc, *response);
+        request->send(response);
     });
 
     // 6. Static Web Control Panel Files

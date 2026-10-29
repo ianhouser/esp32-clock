@@ -7,6 +7,7 @@
 #include "cards/CalendarCard.h"
 #include "cards/NotificationCard.h"
 #include "cards/SystemCard.h"
+#include "NotificationManager.h"
 
 static TFT_eSPI* s_tft = nullptr;
 
@@ -18,6 +19,8 @@ UIManager::UIManager()
       _lblTime(nullptr),
       _badgeAmPm(nullptr),
       _lblAmPm(nullptr),
+      _badgeNotif(nullptr),
+      _lblNotifBadge(nullptr),
       _lblDate(nullptr),
       _cardWeather(nullptr),
       _iconWeather(nullptr),
@@ -42,16 +45,26 @@ UIManager::UIManager()
       _dotEvent2(nullptr),
       _cardNotifications(nullptr),
       _lblNotifTitle(nullptr),
-      _lblEmailAlert(nullptr),
-      _lblMsgAlert(nullptr),
+      _lblNotifBody(nullptr),
+      _lblNotifTime(nullptr),
       _cardSystem(nullptr),
       _lblSysTitle(nullptr),
       _lblSysWifi(nullptr),
       _lblSysHeap(nullptr),
-      _lblSysUptime(nullptr) {}
+      _lblSysUptime(nullptr),
+      _lastCarouselSwitchMs(0),
+      _carouselSlotIdx(0),
+      _currentDisplayedSlotIdx(-1),
+      _lastAlertActiveState(false),
+      _hasCalendarEvents(false) {
+    NotificationManager::getInstance().onNotificationUpdate([this]() {
+        this->updateNotificationCard();
+    });
+}
 
 static bool s_capturePending = false;
 static bool s_captureActive = false;
+static unsigned long s_captureStartMs = 0;
 static uint32_t s_capturePixelCount = 0;
 static uint8_t s_b64LineLen = 0;
 
@@ -66,38 +79,43 @@ void UIManager::dispFlushCallback(lv_disp_drv_t* disp, const lv_area_t* area, lv
         s_tft->endWrite();
 
         if (s_captureActive) {
-            Serial.printf("TILE:%d,%d,%d,%d\n", area->x1, area->y1, w, h);
-            static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-            uint32_t totalPixels = w * h;
-            uint8_t lineLen = 0;
-            for (uint32_t i = 0; i < totalPixels; i++) {
-                uint8_t b0 = ((uint8_t*)&color_p[i])[0];
-                uint8_t b1 = ((uint8_t*)&color_p[i])[1];
-                uint16_t raw = (b0 << 8) | b1;
-                uint8_t r = (((raw >> 11) & 0x1F) * 255) / 31;
-                uint8_t g = (((raw >> 5) & 0x3F) * 255) / 63;
-                uint8_t b = ((raw & 0x1F) * 255) / 31;
-
-                char out[4];
-                out[0] = b64[(r >> 2) & 0x3F];
-                out[1] = b64[((r & 0x03) << 4) | ((g >> 4) & 0x0F)];
-                out[2] = b64[((g & 0x0F) << 2) | ((b >> 6) & 0x03)];
-                out[3] = b64[b & 0x3F];
-
-                Serial.write((const uint8_t*)out, 4);
-                lineLen += 4;
-                if (lineLen >= 64) {
-                    Serial.println();
-                    lineLen = 0;
-                }
-            }
-            if (lineLen > 0) Serial.println();
-            Serial.println("END_TILE");
-
-            s_capturePixelCount += totalPixels;
-            if (s_capturePixelCount >= 320 * 240) {
-                Serial.println("===CAPTURE_PPM_B64_END===");
+            // Safety timeout: abort capture if running longer than 4 seconds
+            if (millis() - s_captureStartMs > 4000) {
                 s_captureActive = false;
+            } else {
+                Serial.printf("TILE:%d,%d,%d,%d\n", area->x1, area->y1, w, h);
+                static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+                uint32_t totalPixels = w * h;
+                uint8_t lineLen = 0;
+                for (uint32_t i = 0; i < totalPixels; i++) {
+                    uint8_t b0 = ((uint8_t*)&color_p[i])[0];
+                    uint8_t b1 = ((uint8_t*)&color_p[i])[1];
+                    uint16_t raw = (b0 << 8) | b1;
+                    uint8_t r = (((raw >> 11) & 0x1F) * 255) / 31;
+                    uint8_t g = (((raw >> 5) & 0x3F) * 255) / 63;
+                    uint8_t b = ((raw & 0x1F) * 255) / 31;
+
+                    char out[4];
+                    out[0] = b64[(r >> 2) & 0x3F];
+                    out[1] = b64[((r & 0x03) << 4) | ((g >> 4) & 0x0F)];
+                    out[2] = b64[((g & 0x0F) << 2) | ((b >> 6) & 0x03)];
+                    out[3] = b64[b & 0x3F];
+
+                    Serial.write((const uint8_t*)out, 4);
+                    lineLen += 4;
+                    if (lineLen >= 64) {
+                        Serial.println();
+                        lineLen = 0;
+                    }
+                }
+                if (lineLen > 0) Serial.println();
+                Serial.println("END_TILE");
+
+                s_capturePixelCount += totalPixels;
+                if (s_capturePixelCount >= 320 * 240) {
+                    Serial.println("===CAPTURE_PPM_B64_END===");
+                    s_captureActive = false;
+                }
             }
         }
     }
@@ -106,6 +124,7 @@ void UIManager::dispFlushCallback(lv_disp_drv_t* disp, const lv_area_t* area, lv
 
 void UIManager::requestCapture() {
     s_captureActive = true;
+    s_captureStartMs = millis();
     s_capturePixelCount = 0;
     Serial.println("\n===CAPTURE_PPM_B64_START===");
     Serial.println("TILED");
@@ -144,6 +163,9 @@ void UIManager::loop() {
         lv_tick_inc(now - lastTick);
     }
     lastTick = now;
+
+    // Check dynamic carousel rotation
+    updateCarousel();
 
     lv_timer_handler();
 }
@@ -269,6 +291,20 @@ void UIManager::buildDashboard() {
     lv_label_set_text(_lblAmPm, "PM");
     lv_obj_set_style_text_font(_lblAmPm, &lv_font_montserrat_12, 0);
     lv_obj_center(_lblAmPm);
+
+    // Notification Unread Badge Chip (Top Right of Clock Card)
+    _badgeNotif = lv_obj_create(_cardClock);
+    lv_obj_set_size(_badgeNotif, 42, 22);
+    lv_obj_set_style_radius(_badgeNotif, 6, 0);
+    lv_obj_set_style_border_width(_badgeNotif, 1, 0);
+    lv_obj_clear_flag(_badgeNotif, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_align(_badgeNotif, LV_ALIGN_TOP_RIGHT, -4, 4);
+    lv_obj_add_flag(_badgeNotif, LV_OBJ_FLAG_HIDDEN);
+
+    _lblNotifBadge = lv_label_create(_badgeNotif);
+    lv_label_set_text(_lblNotifBadge, "! 1");
+    lv_obj_set_style_text_font(_lblNotifBadge, &lv_font_montserrat_12, 0);
+    lv_obj_center(_lblNotifBadge);
 
     // Full Date String
     _lblDate = lv_label_create(_cardClock);
@@ -432,15 +468,17 @@ void UIManager::buildDashboard() {
     lv_obj_set_style_text_font(_lblNotifTitle, &lv_font_montserrat_12, 0);
     lv_obj_set_pos(_lblNotifTitle, 4, 4);
 
-    _lblEmailAlert = lv_label_create(_cardNotifications);
-    lv_label_set_text(_lblEmailAlert, "3 Unread Emails");
-    lv_obj_set_style_text_font(_lblEmailAlert, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(_lblEmailAlert, 4, 32);
+    _lblNotifBody = lv_label_create(_cardNotifications);
+    lv_label_set_text(_lblNotifBody, "No new alerts");
+    lv_obj_set_style_text_font(_lblNotifBody, &lv_font_montserrat_12, 0);
+    lv_label_set_long_mode(_lblNotifBody, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(_lblNotifBody, 136);
+    lv_obj_set_pos(_lblNotifBody, 4, 28);
 
-    _lblMsgAlert = lv_label_create(_cardNotifications);
-    lv_label_set_text(_lblMsgAlert, "Slack: 2 Mentions");
-    lv_obj_set_style_text_font(_lblMsgAlert, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(_lblMsgAlert, 4, 64);
+    _lblNotifTime = lv_label_create(_cardNotifications);
+    lv_label_set_text(_lblNotifTime, "");
+    lv_obj_set_style_text_font(_lblNotifTime, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(_lblNotifTime, 4, 86);
 
     // 6. System Diagnostics Card
     _cardSystem = lv_obj_create(_scr);
@@ -548,6 +586,13 @@ void UIManager::applyThemeStyles(DisplayMode mode) {
     lv_obj_set_style_border_color(_badgeAmPm, colorBorder, 0);
     lv_obj_set_style_text_color(_lblAmPm, colorAccent, 0);
 
+    if (_badgeNotif) {
+        lv_obj_set_style_bg_color(_badgeNotif, colorBadgeBg, 0);
+        lv_obj_set_style_bg_opa(_badgeNotif, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_color(_badgeNotif, colorAccent, 0);
+        lv_obj_set_style_text_color(_lblNotifBadge, colorAccent, 0);
+    }
+
     // Apply Current Weather Card elements
     lv_obj_set_style_text_color(_lblWeatherTemp, colorText, 0);
     lv_obj_set_style_text_color(_lblWeatherDesc, colorAccent, 0);
@@ -569,8 +614,8 @@ void UIManager::applyThemeStyles(DisplayMode mode) {
 
     // Apply Notifications Card elements
     if (_lblNotifTitle) lv_obj_set_style_text_color(_lblNotifTitle, colorAccent, 0);
-    if (_lblEmailAlert) lv_obj_set_style_text_color(_lblEmailAlert, colorText, 0);
-    if (_lblMsgAlert)   lv_obj_set_style_text_color(_lblMsgAlert, colorMuted, 0);
+    if (_lblNotifBody)  lv_obj_set_style_text_color(_lblNotifBody, colorText, 0);
+    if (_lblNotifTime)  lv_obj_set_style_text_color(_lblNotifTime, colorMuted, 0);
 
     // Apply System Card elements
     if (_lblSysTitle)  lv_obj_set_style_text_color(_lblSysTitle, colorAccent, 0);
@@ -629,16 +674,140 @@ void UIManager::refreshCards() {
         lv_obj_set_size(leftCont, 148, 112);
         lv_obj_clear_flag(leftCont, LV_OBJ_FLAG_HIDDEN);
 
-        // Right Slot: (164, 120, 148, 112)
-        lv_obj_t* rightCont = enabledSecondary[1]->getContainer();
-        lv_obj_set_pos(rightCont, 164, 120);
-        lv_obj_set_size(rightCont, 148, 112);
-        lv_obj_clear_flag(rightCont, LV_OBJ_FLAG_HIDDEN);
+        // Update Right Slot via Carousel
+        updateCarousel(true);
     }
+
+    // Update notifications badge & labels
+    updateNotificationCard();
 
     // Redraw entire screen cleanly
     if (lv_scr_act()) {
         lv_obj_invalidate(lv_scr_act());
+    }
+}
+
+void UIManager::updateNotificationCard() {
+    NotificationCard* nc = (NotificationCard*)CardRegistry::getInstance().getCard("notifications");
+    bool showBadges = nc ? nc->showBadges() : true;
+    int unread = NotificationManager::getInstance().getUnreadCount();
+
+    if (_badgeNotif && _lblNotifBadge) {
+        if (showBadges && unread > 0) {
+            char badgeBuf[16];
+            snprintf(badgeBuf, sizeof(badgeBuf), "! %d", unread);
+            lv_label_set_text(_lblNotifBadge, badgeBuf);
+            lv_obj_clear_flag(_badgeNotif, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(_badgeNotif, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    const NotificationItem* activeAlert = NotificationManager::getInstance().getActiveAlert();
+    if (activeAlert) {
+        if (_lblNotifTitle) lv_label_set_text(_lblNotifTitle, activeAlert->title.c_str());
+        if (_lblNotifBody)  lv_label_set_text(_lblNotifBody, activeAlert->message.c_str());
+        if (_lblNotifTime)  lv_label_set_text(_lblNotifTime, activeAlert->source.c_str());
+    } else {
+        if (_lblNotifTitle) lv_label_set_text(_lblNotifTitle, "Alerts");
+        if (_lblNotifBody)  lv_label_set_text(_lblNotifBody, unread > 0 ? "Alerts pending" : "No new alerts");
+        if (_lblNotifTime)  lv_label_set_text(_lblNotifTime, "");
+    }
+
+    updateCarousel(true);
+}
+
+void UIManager::updateCarousel(bool force) {
+    // 1. Check if high-priority notification alert is active
+    bool alertActive = NotificationManager::getInstance().hasActiveAlert();
+    NotificationCard* notifCard = (NotificationCard*)CardRegistry::getInstance().getCard("notifications");
+
+    if (alertActive != _lastAlertActiveState) {
+        _lastAlertActiveState = alertActive;
+        force = true;
+    }
+
+    if (alertActive) {
+        if (force || _currentDisplayedSlotIdx != -99) {
+            _currentDisplayedSlotIdx = -99;
+            const auto& allCards = CardRegistry::getInstance().getCards();
+            for (Card* c : allCards) {
+                if (strcmp(c->getId(), "clock") != 0 && c->getContainer() && c != notifCard) {
+                    lv_obj_add_flag(c->getContainer(), LV_OBJ_FLAG_HIDDEN);
+                }
+            }
+            if (_cardNotifications) {
+                lv_obj_set_pos(_cardNotifications, 164, 120);
+                lv_obj_set_size(_cardNotifications, 148, 112);
+                lv_obj_clear_flag(_cardNotifications, LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+        return;
+    }
+
+    // 2. Normal Carousel: Quick time check before allocating anything
+    int intervalSec = notifCard ? notifCard->getCarouselIntervalSec() : 15;
+    if (intervalSec < 3) intervalSec = 3;
+    unsigned long intervalMs = (unsigned long)intervalSec * 1000UL;
+
+    unsigned long now = millis();
+    bool timeExpired = (now - _lastCarouselSwitchMs >= intervalMs) || (_lastCarouselSwitchMs == 0);
+
+    if (!force && !timeExpired) {
+        return; // Fast path: zero heap allocations, zero LVGL calls on idle loop ticks!
+    }
+
+    const auto& allCards = CardRegistry::getInstance().getCards();
+    std::vector<Card*> enabledSecondary;
+    for (Card* c : allCards) {
+        if (strcmp(c->getId(), "clock") != 0 && c->isEnabled() && c->getContainer()) {
+            enabledSecondary.push_back(c);
+        }
+    }
+
+    if (enabledSecondary.size() < 2) {
+        return;
+    }
+
+    // Build candidates list for right slot (cards from index 1 onward)
+    bool skipEmptyAgenda = notifCard ? notifCard->skipEmptyAgenda() : true;
+    std::vector<Card*> candidates;
+    for (size_t i = 1; i < enabledSecondary.size(); ++i) {
+        Card* c = enabledSecondary[i];
+        if (strcmp(c->getId(), "calendar") == 0 && skipEmptyAgenda && !_hasCalendarEvents && enabledSecondary.size() > 2) {
+            continue;
+        }
+        candidates.push_back(c);
+    }
+
+    if (candidates.empty()) {
+        for (size_t i = 1; i < enabledSecondary.size(); ++i) {
+            candidates.push_back(enabledSecondary[i]);
+        }
+    }
+
+    if (candidates.empty()) return;
+
+    if (timeExpired) {
+        _lastCarouselSwitchMs = now;
+        _carouselSlotIdx = (_carouselSlotIdx + 1) % candidates.size();
+    } else if (_carouselSlotIdx >= candidates.size()) {
+        _carouselSlotIdx = 0;
+    }
+
+    // Only touch LVGL objects if the displayed card actually changed or forced
+    if (force || _currentDisplayedSlotIdx != (int)_carouselSlotIdx) {
+        _currentDisplayedSlotIdx = _carouselSlotIdx;
+        for (size_t i = 0; i < candidates.size(); ++i) {
+            lv_obj_t* cont = candidates[i]->getContainer();
+            if (i == _carouselSlotIdx) {
+                lv_obj_set_pos(cont, 164, 120);
+                lv_obj_set_size(cont, 148, 112);
+                lv_obj_clear_flag(cont, LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(cont, LV_OBJ_FLAG_HIDDEN);
+            }
+        }
     }
 }
 
@@ -714,6 +883,7 @@ void UIManager::updateCalendar(const char* title,
     if (_lblCalendarTitle && title) lv_label_set_text(_lblCalendarTitle, title);
 
     bool hasEv1 = (ev1Title && strlen(ev1Title) > 0 && strcmp(ev1Title, "No Upcoming Events") != 0 && strcmp(ev1Title, "Loading...") != 0);
+    _hasCalendarEvents = hasEv1;
     if (_dotEvent1) {
         if (hasEv1 && ev1Color != 0) {
             lv_obj_set_style_bg_color(_dotEvent1, lv_color_hex(ev1Color), 0);
@@ -741,5 +911,7 @@ void UIManager::updateCalendar(const char* title,
         }
     }
     if (_lblEvent2Title && ev2Title) lv_label_set_text(_lblEvent2Title, ev2Title);
+
+    updateCarousel(true);
 }
 

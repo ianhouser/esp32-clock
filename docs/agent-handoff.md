@@ -1,35 +1,31 @@
 # Agent Handoff
 
-**Last updated:** 2026-10-10 11:38 PDT — Antigravity (Implemented multi-calendar source aggregation, colored dot category indicators, and Web UI feed manager)
+**Last updated:** 2026-10-29 08:36 PDT — Antigravity (Fixed iCal UTC timezone parsing and flashed live firmware)
 
 ## Current Focus
 
 - **Milestone:** [v0.2-web-control](https://github.com/ianhouser/esp32-clock/milestone/2)
-- **Task:** Issue #11: Modular Web Control Panel & Customization Dashboard (PR #12)
+- **Task:** Notifications Engine & Dynamic Bottom-Right Card Carousel
 - **Branch:** `feat/11-web-control-panel`
 - **Blockers:** None
 
 ## Last Three Decisions
 
-1. Built multi-calendar source aggregation (`include/CalendarManager.h`, `src/CalendarManager.cpp`, `include/cards/CalendarCard.h`): supports multiple independent iCal feeds (e.g., Personal, Family) with individual names, URLs, and hex colors, merging events chronologically — 2026-10-10
-2. Added dedicated 6×6 circular category dot indicators (`●`) on LVGL display (`UIManager.cpp`): dynamically colored per event source, hiding when no events are scheduled — 2026-10-10
-3. Implemented interactive Multi-Feed Manager in Web Control Panel (`data/app.js`, `data/style.css`): dynamic add/remove feed cards, custom color picker swatches, and backward-compatible serialization — 2026-10-10
+1. Converted RFC 5545 iCalendar UTC timestamps (`Z` suffix) to local time using `localtime_r` with configured POSIX timezone, and filtered expired events by comparing end epoch against `time(nullptr)` — 2026-10-29
+2. Eliminated per-loop LVGL invalidation in `updateCarousel`: cached active slot indices and gated object positioning so LVGL only touches SPI when the card actually changes — 2026-10-16
+3. Added 4-second watchdog timer on `s_captureActive` in `dispFlushCallback` to prevent USB CDC serial buffer stalls from blocking the rendering engine — 2026-10-16
 
 ## What Just Happened
 
-- Added `CalendarSource` data model to `CalendarCard` and `CalendarManager`
-- Implemented sequential multi-feed streaming with cooperative UI yielding (`yieldUI()`) to ensure no heap spikes or UI stutter
-- Implemented chronological event sorting (`rawStart` comparator) across aggregated calendar sources
-- Built LVGL 6×6 colored dot widgets (`_dotEvent1`, `_dotEvent2`) positioned next to event titles
-- Created multi-source editor in Web Control Panel with color pickers and feed cards
-- Flashed LittleFS filesystem and firmware binary to physical ESP32
-- Verified over serial framebuffer capture and web `/api/config`
-- Pushed updates to `feat/11-web-control-panel`
+- Fixed iCalendar event timezone offset bug in `CalendarManager` where UTC times were formatted directly without local timezone conversion (e.g. Oct 28 5:15 PM PDT appeared as Oct 29 12:15 AM).
+- Added `parseICalDateTime`, `portable_timegm`, and event expiration checking.
+- Built and flashed firmware to physical ESP32-C3 device on `/dev/cu.usbmodem211101`.
+- Captured live screen frame buffer (`screen_capture.png`) confirming the past Disney event was dropped and the upcoming agenda now accurately shows valid future events ("Change brita filter", "Dentist").
 
 ## Next Up
 
-1. Add unit/integration tests for `CalendarManager` line parser edge cases
-2. Conduct final PR self-review on PR #12 and hand off to user for merge approval
+1. Test Discord webhook or mobile app notification push via `ntfy.sh`
+2. Test rotation through configured cards (Agenda, Forecast, Telemetry) on live hardware
 
 ## Open Risks / Watch List
 

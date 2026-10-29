@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <vector>
+#include <time.h>
 
 struct CalendarSource {
     String name;
@@ -15,6 +16,18 @@ struct CalendarEvent {
     String rawStart;
     uint32_t colorHex = 0x3B82F6;
     String sourceName = "Calendar";
+    time_t startEpoch = 0;
+};
+
+struct ParsedEventTime {
+    time_t epoch = 0;
+    int localYear = 0;
+    int localMonth = 0;
+    int localDay = 0;
+    int localHour = 0;
+    int localMin = 0;
+    bool isAllDay = false;
+    char localYmd[9] = {0};
 };
 
 class CalendarManager {
@@ -44,6 +57,8 @@ private:
 
     bool fetchCalendar(const char* currentDateYmd);
     bool fetchSource(const CalendarSource& source, const char* currentDateYmd, std::vector<CalendarEvent>& outEvents);
+    static bool parseICalDateTime(const String& dtStr, ParsedEventTime& out);
+    void formatEventTime(const ParsedEventTime& evTime, String& outTimeStr, const char* currentDateYmd);
     void formatEventTime(const String& dtstart, String& outTimeStr, const char* currentDateYmd);
     static uint32_t parseHexColor(const String& hexStr);
 };

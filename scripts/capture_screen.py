@@ -62,23 +62,26 @@ def capture_screen(port=None, output_path="artifacts/screen_capture.png"):
 
     print(f"[capture] Opening serial port: {port}")
     fd = open_serial_port(port, 115200)
-    time.sleep(0.5)
+    time.sleep(1.0)
 
     # Flush input buffer
     termios.tcflush(fd, termios.TCIFLUSH)
 
     print("[capture] Sending 'cap' command...")
-    os.write(fd, b"cap\n")
+    os.write(fd, b"\r\ncap\n")
 
     # Wait for header
     start_time = time.time()
     header_found = False
     residual = bytearray()
-    while time.time() - start_time < 5.0:
-        line = read_line(fd, timeout=1.0, residual=residual)
+    while time.time() - start_time < 6.0:
+        line = read_line(fd, timeout=1.5, residual=residual)
         if line and "===CAPTURE_PPM_B64_START===" in line:
             header_found = True
             break
+        elif line:
+            # Debug log any other device output
+            print(f"[device] {line}")
 
     if not header_found:
         print("[capture] Error: Timeout waiting for ===CAPTURE_PPM_B64_START===")

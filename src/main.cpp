@@ -17,6 +17,8 @@
 #include "cards/SystemCard.h"
 #include "CalendarManager.h"
 #include "NetworkTaskCoordinator.h"
+#include "NotificationManager.h"
+#include "NtfyClient.h"
 
 // Secure credentials fallback if secrets.h is not yet created
 #if __has_include("secrets.h")
@@ -116,6 +118,24 @@ void applyServicesConfig() {
         );
     }
 
+    // 3. Notifications / ntfy.sh Service
+    NotificationCard* nc = (NotificationCard*)CardRegistry::getInstance().getCard("notifications");
+    if (nc && nc->isEnabled() && nc->getNtfyTopic().length() > 0) {
+        unsigned long pollMs = (nc->getPollIntervalSec() > 0 ? nc->getPollIntervalSec() : 10) * 1000UL;
+        Serial.printf("[main] Configuring ntfy.sh: Topic '%s' (server: %s, poll: %lu ms)\n",
+                      nc->getNtfyTopic().c_str(), nc->getNtfyServer().c_str(), pollMs);
+        NetworkTaskCoordinator::getInstance().registerTask(
+            "ntfy",
+            pollMs,
+            4000, // 4s after boot
+            3,    // Priority 3
+            []() {
+                return NtfyClient::getInstance().poll();
+            }
+        );
+        NetworkTaskCoordinator::getInstance().requestRun("ntfy");
+    }
+
     // Trigger immediate execution for re-configured network tasks
     NetworkTaskCoordinator::getInstance().requestRun("weather");
     NetworkTaskCoordinator::getInstance().requestRun("calendar");
@@ -175,6 +195,10 @@ void setup() {
     // Initialize LVGL UI Manager
     uiManager.begin(&tft);
 
+    // Initialize Notifications
+    NotificationManager::getInstance().begin();
+    NtfyClient::getInstance().begin();
+
     // Register UI yield hook for non-blocking network operations
     NetworkTaskCoordinator::getInstance().setYieldCallback([]() {
         uiManager.loop();
@@ -188,6 +212,9 @@ void setup() {
 }
 
 void loop() {
+    // Process Notification life-cycle & timeouts
+    NotificationManager::getInstance().loop();
+
     // Process WiFi & SNTP state machine
     timeManager.update();
 

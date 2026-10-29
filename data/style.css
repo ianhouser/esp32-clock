@@ -912,3 +912,59 @@ input:checked + .slider:before {
 .btn-danger:hover {
   background: #ef4444;
 }
+
+/* Notification Controls & Accordion */
+.notif-actions-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.notif-actions-row .btn-primary {
+  flex: 1;
+}
+
+.notif-help-accordion {
+  margin-top: 10px;
+}
+
+.notif-help-accordion details {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+}
+
+.notif-help-accordion summary {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--color-accent);
+  cursor: pointer;
+  user-select: none;
+}
+
+.notif-help-accordion .help-content {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.notif-help-accordion .help-content p {
+  margin-bottom: 8px;
+}
+
+.notif-help-accordion .help-content code {
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-main);
+  word-break: break-all;
+}
+
+.notif-help-accordion .help-content a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+

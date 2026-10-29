@@ -83,13 +83,18 @@
     {
       "id": "notifications",
       "title": "Email & Notifications",
-      "description": "Unread email badges and messaging alert banners",
+      "description": "Discord, phone, and cloud alerts via ntfy.sh",
       "icon": "bell",
       "enabled": false,
       "order": 4,
       "config": {
+        "ntfy_server": "https://ntfy.sh",
+        "ntfy_topic": "",
+        "poll_interval_sec": 10,
         "show_badges": true,
-        "timeout_sec": 30
+        "timeout_sec": 30,
+        "carousel_interval_sec": 15,
+        "skip_empty_agenda": true
       }
     },
     {

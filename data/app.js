@@ -162,11 +162,19 @@ async function loadConfig() {
         {
           id: 'notifications',
           title: 'Email & Notifications',
-          description: 'Unread email badges and messaging alert banners',
+          description: 'Discord, phone, and cloud alerts via ntfy.sh',
           icon: 'bell',
           enabled: false,
           order: 4,
-          config: { show_badges: true, timeout_sec: 30 }
+          config: {
+            ntfy_server: 'https://ntfy.sh',
+            ntfy_topic: '',
+            poll_interval_sec: 10,
+            show_badges: true,
+            timeout_sec: 30,
+            carousel_interval_sec: 15,
+            skip_empty_agenda: true
+          }
         },
         {
           id: 'system',
@@ -469,16 +477,68 @@ function renderCardConfigFields(card) {
     case 'notifications':
       return `
         <div class="form-grid">
+          <div class="form-row full-width">
+            <div class="section-label-row">
+              <label>ntfy.sh Cloud Alert Topic</label>
+              <button type="button" class="btn-subtle btn-generate-topic">⚡ Random Topic</button>
+            </div>
+            <div class="input-affix">
+              <span class="affix font-mono">ntfy.sh/</span>
+              <input type="text" class="input-field font-mono notif-topic-input" data-key="ntfy_topic" placeholder="e.g. clock-alerts-897b" value="${cfg.ntfy_topic || ''}">
+            </div>
+            <span class="hint">Subscribe free via ntfy.sh. Any message pushed to this topic appears instantly on the clock.</span>
+          </div>
+
+          <div class="form-row">
+            <label>Server URL</label>
+            <input type="text" class="input-field" data-key="ntfy_server" value="${cfg.ntfy_server || 'https://ntfy.sh'}">
+          </div>
+
+          <div class="form-row">
+            <label>Poll Interval (Seconds)</label>
+            <input type="number" min="5" max="60" class="input-field" data-key="poll_interval_sec" value="${cfg.poll_interval_sec || 10}">
+          </div>
+
           <div class="form-row">
             <label>Show Notification Badges</label>
             <select class="input-field" data-key="show_badges">
-              <option value="true" ${cfg.show_badges ? 'selected' : ''}>Enabled</option>
-              <option value="false" ${!cfg.show_badges ? 'selected' : ''}>Disabled</option>
+              <option value="true" ${cfg.show_badges !== false ? 'selected' : ''}>Enabled</option>
+              <option value="false" ${cfg.show_badges === false ? 'selected' : ''}>Disabled</option>
             </select>
           </div>
+
           <div class="form-row">
             <label>Alert Dismiss Timeout (Seconds)</label>
             <input type="number" min="5" max="120" class="input-field" data-key="timeout_sec" value="${cfg.timeout_sec || 30}">
+          </div>
+
+          <div class="form-row">
+            <label>Carousel Rotation Interval (Seconds)</label>
+            <input type="number" min="5" max="120" class="input-field" data-key="carousel_interval_sec" value="${cfg.carousel_interval_sec || 15}">
+          </div>
+
+          <div class="form-row">
+            <label>Smart Skip Empty Agenda</label>
+            <select class="input-field" data-key="skip_empty_agenda">
+              <option value="true" ${cfg.skip_empty_agenda !== false ? 'selected' : ''}>Skip if No Events</option>
+              <option value="false" ${cfg.skip_empty_agenda === false ? 'selected' : ''}>Always Show in Cycle</option>
+            </select>
+          </div>
+
+          <div class="form-row full-width notif-actions-row">
+            <button type="button" class="btn-primary btn-send-test-notif">🔔 Send Test Alert</button>
+            <button type="button" class="btn-subtle btn-clear-notifs">Dismiss / Clear All</button>
+          </div>
+
+          <div class="form-row full-width notif-help-accordion">
+            <details>
+              <summary>📖 How to Connect Discord, Phone & Webhooks</summary>
+              <div class="help-content">
+                <p><strong>1. From Your Phone (iOS / Android):</strong> Download the free <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy app</a>, tap "+" and enter your topic name. Send alerts from shortcuts or share sheets directly to your clock!</p>
+                <p><strong>2. From Discord:</strong> Use a bot (like Carl-bot or webhook relay) to POST messages to <code>${cfg.ntfy_server || 'https://ntfy.sh'}/${cfg.ntfy_topic || '&lt;your-topic&gt;'}</code>.</p>
+                <p><strong>3. From Any Browser or cURL:</strong> Visit <code>https://ntfy.sh/${cfg.ntfy_topic || '&lt;your-topic&gt;'}</code> in any browser to push instant messages to the display.</p>
+              </div>
+            </details>
           </div>
         </div>
       `;
@@ -613,6 +673,67 @@ function bindCardConfigInputs(item, card) {
         );
       }
     });
+  }
+
+  // Notification card actions (Random Topic, Test Alert, Clear)
+  if (card.id === 'notifications') {
+    const genBtn = item.querySelector('.btn-generate-topic');
+    if (genBtn) {
+      genBtn.addEventListener('click', () => {
+        const randHex = Math.random().toString(16).substring(2, 8);
+        const topic = `clock-alert-${randHex}`;
+        const input = item.querySelector('.notif-topic-input');
+        if (input) {
+          input.value = topic;
+          if (!card.config) card.config = {};
+          card.config.ntfy_topic = topic;
+          showToast(`Generated topic: ${topic}`);
+          renderPreview();
+        }
+      });
+    }
+
+    const testBtn = item.querySelector('.btn-send-test-notif');
+    if (testBtn) {
+      testBtn.addEventListener('click', async () => {
+        testBtn.disabled = true;
+        testBtn.textContent = 'Sending...';
+        try {
+          const res = await fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: 'Discord: #general',
+              message: 'Hey, are you ready to hop online?',
+              source: 'test',
+              timeout_sec: card.config?.timeout_sec || 30
+            })
+          });
+          if (res.ok) {
+            showToast('🔔 Test alert sent to clock display!');
+          } else {
+            showToast('Failed to send test alert');
+          }
+        } catch (e) {
+          showToast('Alert sent (offline preview mode)');
+        } finally {
+          testBtn.disabled = false;
+          testBtn.textContent = '🔔 Send Test Alert';
+        }
+      });
+    }
+
+    const clearBtn = item.querySelector('.btn-clear-notifs');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', async () => {
+        try {
+          await fetch('/api/notify/clear', { method: 'POST' });
+          showToast('Cleared all active alerts');
+        } catch (e) {
+          showToast('Cleared alerts (offline)');
+        }
+      });
+    }
   }
 }
 
@@ -953,18 +1074,19 @@ function drawSubCard(ctx, x, y, w, h, card, colCard, colBorder, colAccent, colTe
       break;
     }
     case 'notifications': {
+      const topic = card.config?.ntfy_topic || 'alerts';
       ctx.fillStyle = colAccent;
       ctx.font = '600 12px "Outfit", sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('Notifications', x + 14, y + 24);
+      ctx.fillText('Discord: #gaming', x + 14, y + 24);
 
       ctx.fillStyle = colText;
-      ctx.font = '600 12px "Outfit", sans-serif';
-      ctx.fillText('✉ 3 Unread Emails', x + 14, y + 54);
+      ctx.font = '500 12px "Outfit", sans-serif';
+      ctx.fillText('Ready for the match?', x + 14, y + 54);
 
       ctx.fillStyle = colMuted;
       ctx.font = '400 10px "Outfit", sans-serif';
-      ctx.fillText('💬 Slack: 2 Mentions', x + 14, y + 82);
+      ctx.fillText(`ntfy.sh/${topic} • Just now`, x + 14, y + 84);
       break;
     }
     case 'system': {

@@ -66,41 +66,143 @@ bool CalendarManager::update(bool isWiFiConnected, const char* currentDateYmd) {
     return false;
 }
 
-void CalendarManager::formatEventTime(const String& dtstart, String& outTimeStr, const char* currentDateYmd) {
-    if (dtstart.length() < 8) {
-        outTimeStr = "";
-        return;
+static time_t portable_timegm(const struct tm* tm) {
+    static const int daysBeforeMonth[] = {
+        0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
+    };
+    int year = tm->tm_year + 1900;
+    int mon = tm->tm_mon; // 0..11
+    if (mon < 0 || mon > 11) return (time_t)0;
+
+    int y = year - (mon < 2 ? 1 : 0);
+    int leapDays = (y / 4) - (y / 100) + (y / 400) - (1969 / 4 - 1969 / 100 + 1969 / 400);
+
+    long days = (long)(year - 1970) * 365 + daysBeforeMonth[mon] + (tm->tm_mday - 1) + leapDays;
+    return (time_t)(days * 86400L + tm->tm_hour * 3600L + tm->tm_min * 60L + tm->tm_sec);
+}
+
+bool CalendarManager::parseICalDateTime(const String& dtStr, ParsedEventTime& out) {
+    String dt = dtStr;
+    dt.trim();
+    if (dt.length() < 8) return false;
+
+    int tIdx = dt.indexOf('T');
+    if (tIdx == -1) {
+        // All-day event: YYYYMMDD
+        out.isAllDay = true;
+        int y = dt.substring(0, 4).toInt();
+        int m = dt.substring(4, 6).toInt();
+        int d = dt.substring(6, 8).toInt();
+        if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+
+        out.localYear = y;
+        out.localMonth = m;
+        out.localDay = d;
+        out.localHour = 0;
+        out.localMin = 0;
+        snprintf(out.localYmd, sizeof(out.localYmd), "%04d%02d%02d", y, m, d);
+
+        struct tm tmLocal = {0};
+        tmLocal.tm_year = y - 1900;
+        tmLocal.tm_mon = m - 1;
+        tmLocal.tm_mday = d;
+        tmLocal.tm_hour = 0;
+        tmLocal.tm_min = 0;
+        tmLocal.tm_sec = 0;
+        tmLocal.tm_isdst = -1;
+        out.epoch = mktime(&tmLocal);
+        return true;
     }
 
-    String datePart = dtstart.substring(0, 8); // YYYYMMDD
-    int month = dtstart.substring(4, 6).toInt();
-    int day = dtstart.substring(6, 8).toInt();
+    out.isAllDay = false;
+    int y = dt.substring(0, 4).toInt();
+    int m = dt.substring(4, 6).toInt();
+    int d = dt.substring(6, 8).toInt();
+    if (m < 1 || m > 12 || d < 1 || d > 31) return false;
 
-    String timePart = "";
-    int tIdx = dtstart.indexOf('T');
-    if (tIdx != -1 && dtstart.length() >= (unsigned int)(tIdx + 5)) {
-        int hour = dtstart.substring(tIdx + 1, tIdx + 3).toInt();
-        int min = dtstart.substring(tIdx + 3, tIdx + 5).toInt();
-        const char* ampm = (hour >= 12) ? "PM" : "AM";
-        int hour12 = hour % 12;
-        if (hour12 == 0) hour12 = 12;
-        char timeBuf[16];
-        snprintf(timeBuf, sizeof(timeBuf), "%d:%02d %s", hour12, min, ampm);
-        timePart = timeBuf;
+    if (dt.length() < (unsigned int)(tIdx + 5)) return false;
+    int hour = dt.substring(tIdx + 1, tIdx + 3).toInt();
+    int min = dt.substring(tIdx + 3, tIdx + 5).toInt();
+    int sec = 0;
+    if (dt.length() >= (unsigned int)(tIdx + 7) && isdigit(dt.charAt(tIdx + 5))) {
+        sec = dt.substring(tIdx + 5, tIdx + 7).toInt();
     }
 
-    if (currentDateYmd && datePart == currentDateYmd) {
-        outTimeStr = (timePart.length() > 0) ? ("Today at " + timePart) : "Today (All day)";
+    bool isUtc = dt.endsWith("Z") || dt.endsWith("z");
+    if (isUtc) {
+        struct tm tmUtc = {0};
+        tmUtc.tm_year = y - 1900;
+        tmUtc.tm_mon = m - 1;
+        tmUtc.tm_mday = d;
+        tmUtc.tm_hour = hour;
+        tmUtc.tm_min = min;
+        tmUtc.tm_sec = sec;
+
+        time_t utcEpoch = portable_timegm(&tmUtc);
+        out.epoch = utcEpoch;
+
+        struct tm tmLocal = {0};
+        localtime_r(&utcEpoch, &tmLocal);
+
+        out.localYear = tmLocal.tm_year + 1900;
+        out.localMonth = tmLocal.tm_mon + 1;
+        out.localDay = tmLocal.tm_mday;
+        out.localHour = tmLocal.tm_hour;
+        out.localMin = tmLocal.tm_min;
+        snprintf(out.localYmd, sizeof(out.localYmd), "%04d%02d%02d",
+                 out.localYear, out.localMonth, out.localDay);
     } else {
-        const char* mName = (month >= 1 && month <= 12) ? MONTH_NAMES[month] : "Date";
+        out.localYear = y;
+        out.localMonth = m;
+        out.localDay = d;
+        out.localHour = hour;
+        out.localMin = min;
+        snprintf(out.localYmd, sizeof(out.localYmd), "%04d%02d%02d", y, m, d);
+
+        struct tm tmLocal = {0};
+        tmLocal.tm_year = y - 1900;
+        tmLocal.tm_mon = m - 1;
+        tmLocal.tm_mday = d;
+        tmLocal.tm_hour = hour;
+        tmLocal.tm_min = min;
+        tmLocal.tm_sec = sec;
+        tmLocal.tm_isdst = -1;
+        out.epoch = mktime(&tmLocal);
+    }
+
+    return true;
+}
+
+void CalendarManager::formatEventTime(const ParsedEventTime& evTime, String& outTimeStr, const char* currentDateYmd) {
+    char timeBuf[16] = {0};
+    if (!evTime.isAllDay) {
+        int hour12 = evTime.localHour % 12;
+        if (hour12 == 0) hour12 = 12;
+        const char* ampm = (evTime.localHour >= 12) ? "PM" : "AM";
+        snprintf(timeBuf, sizeof(timeBuf), "%d:%02d %s", hour12, evTime.localMin, ampm);
+    }
+
+    if (currentDateYmd && strcmp(evTime.localYmd, currentDateYmd) == 0) {
+        outTimeStr = evTime.isAllDay ? "Today (All day)" : ("Today at " + String(timeBuf));
+    } else {
+        const char* mName = (evTime.localMonth >= 1 && evTime.localMonth <= 12) ? MONTH_NAMES[evTime.localMonth] : "Date";
         char dateBuf[32];
-        if (timePart.length() > 0) {
-            snprintf(dateBuf, sizeof(dateBuf), "%s %d, %s", mName, day, timePart.c_str());
+        if (!evTime.isAllDay) {
+            snprintf(dateBuf, sizeof(dateBuf), "%s %d, %s", mName, evTime.localDay, timeBuf);
         } else {
-            snprintf(dateBuf, sizeof(dateBuf), "%s %d", mName, day);
+            snprintf(dateBuf, sizeof(dateBuf), "%s %d", mName, evTime.localDay);
         }
         outTimeStr = dateBuf;
     }
+}
+
+void CalendarManager::formatEventTime(const String& dtstart, String& outTimeStr, const char* currentDateYmd) {
+    ParsedEventTime parsed;
+    if (!parseICalDateTime(dtstart, parsed)) {
+        outTimeStr = "";
+        return;
+    }
+    formatEventTime(parsed, outTimeStr, currentDateYmd);
 }
 
 bool CalendarManager::fetchSource(const CalendarSource& source, const char* currentDateYmd, std::vector<CalendarEvent>& outEvents) {
@@ -140,6 +242,7 @@ bool CalendarManager::fetchSource(const CalendarSource& source, const char* curr
     uint32_t colorHex = parseHexColor(source.color);
     String curSummary = "";
     String curDtStart = "";
+    String curDtEnd = "";
     int sourceParsed = 0;
     int sourceFuture = 0;
     unsigned long startStream = millis();
@@ -167,6 +270,7 @@ bool CalendarManager::fetchSource(const CalendarSource& source, const char* curr
         if (line.startsWith("BEGIN:VEVENT")) {
             curSummary = "";
             curDtStart = "";
+            curDtEnd = "";
         } else if (line.startsWith("SUMMARY:")) {
             curSummary = line.substring(8);
         } else if (line.startsWith("DTSTART")) {
@@ -174,22 +278,51 @@ bool CalendarManager::fetchSource(const CalendarSource& source, const char* curr
             if (colon != -1) {
                 curDtStart = line.substring(colon + 1);
             }
+        } else if (line.startsWith("DTEND")) {
+            int colon = line.indexOf(':');
+            if (colon != -1) {
+                curDtEnd = line.substring(colon + 1);
+            }
         } else if (line.startsWith("END:VEVENT")) {
             if (curSummary.length() > 0 && curDtStart.length() >= 8) {
                 sourceParsed++;
 
-                String dateYmd = curDtStart.substring(0, 8);
-                bool isFuture = (!currentDateYmd || dateYmd >= currentDateYmd);
+                ParsedEventTime parsedStart;
+                if (parseICalDateTime(curDtStart, parsedStart)) {
+                    time_t endEpoch = 0;
+                    if (curDtEnd.length() >= 8) {
+                        ParsedEventTime parsedEnd;
+                        if (parseICalDateTime(curDtEnd, parsedEnd)) {
+                            endEpoch = parsedEnd.epoch;
+                        }
+                    }
+                    if (endEpoch == 0) {
+                        endEpoch = parsedStart.isAllDay ? (parsedStart.epoch + 86400) : (parsedStart.epoch + 3600);
+                    }
 
-                if (isFuture) {
-                    sourceFuture++;
-                    CalendarEvent ev;
-                    ev.summary = curSummary;
-                    ev.rawStart = curDtStart;
-                    ev.colorHex = colorHex;
-                    ev.sourceName = source.name;
-                    formatEventTime(curDtStart, ev.timeStr, currentDateYmd);
-                    outEvents.push_back(ev);
+                    time_t nowEpoch = time(nullptr);
+                    bool hasValidTime = (nowEpoch > 1704067200);
+
+                    bool isFuture = false;
+                    if (hasValidTime) {
+                        isFuture = (endEpoch >= nowEpoch);
+                    } else if (currentDateYmd && currentDateYmd[0]) {
+                        isFuture = (strcmp(parsedStart.localYmd, currentDateYmd) >= 0);
+                    } else {
+                        isFuture = true;
+                    }
+
+                    if (isFuture) {
+                        sourceFuture++;
+                        CalendarEvent ev;
+                        ev.summary = curSummary;
+                        ev.rawStart = curDtStart;
+                        ev.colorHex = colorHex;
+                        ev.sourceName = source.name;
+                        ev.startEpoch = parsedStart.epoch;
+                        formatEventTime(parsedStart, ev.timeStr, currentDateYmd);
+                        outEvents.push_back(ev);
+                    }
                 }
             }
         }
@@ -206,6 +339,19 @@ bool CalendarManager::fetchCalendar(const char* currentDateYmd) {
         _statusText = "No Sources";
         _events.clear();
         return false;
+    }
+
+    char todayYmdBuf[16] = {0};
+    if (!currentDateYmd || currentDateYmd[0] == '\0') {
+        time_t now = time(nullptr);
+        if (now > 1704067200) {
+            struct tm curTm;
+            if (localtime_r(&now, &curTm)) {
+                snprintf(todayYmdBuf, sizeof(todayYmdBuf), "%04d%02d%02d",
+                         curTm.tm_year + 1900, curTm.tm_mon + 1, curTm.tm_mday);
+                currentDateYmd = todayYmdBuf;
+            }
+        }
     }
 
     Serial.printf("[CalendarManager] Starting aggregation across %d calendar feed(s)...\n", (int)_sources.size());
@@ -236,7 +382,7 @@ bool CalendarManager::fetchCalendar(const char* currentDateYmd) {
 
     // Sort all merged future events chronologically
     std::sort(allFutureEvents.begin(), allFutureEvents.end(), [](const CalendarEvent& a, const CalendarEvent& b) {
-        return a.rawStart < b.rawStart;
+        return a.startEpoch < b.startEpoch;
     });
 
     _events.clear();

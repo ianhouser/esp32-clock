@@ -54,6 +54,8 @@ private:
     lv_obj_t* _lblTime;
     lv_obj_t* _badgeAmPm;
     lv_obj_t* _lblAmPm;
+    lv_obj_t* _badgeNotif;
+    lv_obj_t* _lblNotifBadge;
     lv_obj_t* _lblDate;
 
     // 2. Current Weather Card (Bottom Left)
@@ -88,8 +90,8 @@ private:
     // 5. Notifications Card
     lv_obj_t* _cardNotifications;
     lv_obj_t* _lblNotifTitle;
-    lv_obj_t* _lblEmailAlert;
-    lv_obj_t* _lblMsgAlert;
+    lv_obj_t* _lblNotifBody;
+    lv_obj_t* _lblNotifTime;
 
     // 6. System Diagnostics Card
     lv_obj_t* _cardSystem;
@@ -97,6 +99,15 @@ private:
     lv_obj_t* _lblSysWifi;
     lv_obj_t* _lblSysHeap;
     lv_obj_t* _lblSysUptime;
+
+    // Dynamic Carousel state
+    unsigned long _lastCarouselSwitchMs;
+    size_t _carouselSlotIdx;
+    int _currentDisplayedSlotIdx;
+    bool _lastAlertActiveState;
+    bool _hasCalendarEvents;
+    void updateCarousel(bool force = false);
+    void updateNotificationCard();
 
     // Theme Styles
     lv_style_t _styleScr;
